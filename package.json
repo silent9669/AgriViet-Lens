@@ -1,0 +1,22 @@
+{
+  "name": "agriviet-lens",
+  "version": "1.0.0",
+  "description": "AgriViet Lens - AI-Powered Crop Pathology Diagnostic & Field Advisory Platform for Google AI Riser Vietnam 2026",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/test_offline_db.js && node tests/test_gemini_service.js && node tests/test_services.js",
+    "test:e2e": "node tests/e2e_test.js",
+    "start": "npx serve -l 3000 ."
+  },
+  "keywords": [
+    "google-ai-studio",
+    "gemini",
+    "agriculture",
+    "vietnam",
+    "ai-riser",
+    "vibe-coding"
+  ],
+  "author": "AI Riser Builder Team",
+  "license": "MIT"
+}
