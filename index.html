@@ -263,7 +263,7 @@
   <div class="app-shell">
     <header class="topbar sticky top-0 z-40">
       <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <a href="#tab-scanner" class="flex min-w-0 items-center gap-3" aria-label="AgriViet Lens, về trang chẩn đoán">
+        <a href="#tab-scanner" class="flex min-h-[44px] min-w-0 items-center gap-3" aria-label="AgriViet Lens, về trang chẩn đoán">
           <span class="brand-mark" aria-hidden="true">🌾</span>
           <span class="min-w-0">
             <span class="block truncate text-lg font-extrabold tracking-tight sm:text-xl">AgriViet Lens</span>
@@ -279,7 +279,7 @@
             <option value="dragonfruit">🍈 Thanh long</option>
             <option value="general">🌿 Cây trồng khác</option>
           </select>
-          <button id="themeToggleBtn" type="button" class="control inline-flex items-center justify-center px-3 text-lg" aria-label="Đổi giao diện sáng tối" title="Đổi giao diện sáng tối">☼</button>
+          <button id="themeToggleBtn" type="button" class="control inline-flex items-center justify-center px-3 text-lg" aria-label="Đổi giao diện sáng tối" aria-pressed="false" title="Đổi giao diện sáng tối">☼</button>
           <button id="apiKeyBtn" type="button" class="secondary-btn px-3 text-sm sm:px-4">Cài API</button>
         </div>
       </div>
@@ -311,7 +311,7 @@
                 <span class="mono rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-secondary)]">JPG · PNG</span>
               </div>
 
-              <div id="dropzone" class="dropzone flex flex-col items-center justify-center p-4 text-center" tabindex="0" role="button" aria-label="Tải ảnh cây trồng lên hoặc kéo thả vào đây">
+              <div id="dropzone" class="dropzone flex flex-col items-center justify-center p-4 text-center">
                 <input id="fileInput" class="sr-only" type="file" accept="image/*">
                 <input id="cameraInput" class="sr-only" type="file" accept="image/*" capture="environment">
                 <div id="uploadPrompt" class="flex flex-col items-center gap-3">
@@ -343,13 +343,13 @@
                   <p class="section-label mb-1">Thử nhanh</p>
                   <h2 id="presetHeading" class="section-title text-lg">Bốn ca bệnh quen thuộc</h2>
                 </div>
-                <span class="mono text-xs text-[var(--text-subtle)]">OFFLINE DEMO</span>
+                <span class="mono text-xs text-[var(--text-subtle)]">MẪU NGOẠI TUYẾN</span>
               </div>
               <div class="grid grid-cols-2 gap-2">
-                <button class="preset-btn secondary-btn px-2 text-sm" data-preset="rice">🌾 Lúa Nước</button>
-                <button class="preset-btn secondary-btn px-2 text-sm" data-preset="durian">🥑 Sầu Riêng</button>
-                <button class="preset-btn secondary-btn px-2 text-sm" data-preset="coffee">☕ Cà Phê</button>
-                <button class="preset-btn secondary-btn px-2 text-sm" data-preset="dragonfruit">🍈 Thanh Long</button>
+                <button type="button" class="preset-btn secondary-btn px-2 text-sm" data-preset="rice">🌾 Lúa Nước</button>
+                <button type="button" class="preset-btn secondary-btn px-2 text-sm" data-preset="durian">🥑 Sầu Riêng</button>
+                <button type="button" class="preset-btn secondary-btn px-2 text-sm" data-preset="coffee">☕ Cà Phê</button>
+                <button type="button" class="preset-btn secondary-btn px-2 text-sm" data-preset="dragonfruit">🍈 Thanh Long</button>
               </div>
             </section>
           </div>
@@ -396,8 +396,8 @@
                     <h3 class="section-title text-lg">Điều trị theo mức độ ruộng</h3>
                   </div>
                   <div class="flex gap-2" role="tablist" aria-label="Loại phác đồ điều trị">
-                    <button id="organicTab" type="button" class="treatment-tab active px-3" role="tab" aria-selected="true">🌿 Sinh học</button>
-                    <button id="chemicalTab" type="button" class="treatment-tab px-3" role="tab" aria-selected="false">⚗ Hóa học</button>
+                    <button id="organicTab" type="button" class="treatment-tab active px-3" role="tab" aria-controls="organicPanel" aria-selected="true">🌿 Sinh học</button>
+                    <button id="chemicalTab" type="button" class="treatment-tab px-3" role="tab" aria-controls="chemicalPanel" aria-selected="false">⚗ Hóa học</button>
                   </div>
                 </div>
 
@@ -477,7 +477,7 @@
       <div class="modal-card surface w-full max-w-lg rounded-[var(--radius-card)] p-5 sm:p-7">
         <div class="flex items-start justify-between gap-4"><div><p class="section-label mb-1">Kết nối tùy chọn</p><h2 id="apiKeyHeading" class="section-title text-xl">Cấu hình Gemini API</h2></div><button id="closeApiKeyBtn" type="button" class="secondary-btn w-11 px-0 text-xl" aria-label="Đóng cửa sổ">×</button></div>
         <p class="mt-5 text-sm leading-relaxed text-[var(--text-secondary)]">Dùng khóa miễn phí từ Google AI Studio để chẩn đoán ảnh mới. Khóa chỉ được lưu trong trình duyệt này và không cần thiết cho 4 mẫu ngoại tuyến.</p>
-        <label class="section-label mt-5 block" for="apiKeyInput">Gemini API Key</label>
+        <label class="section-label mt-5 block" for="apiKeyInput">Khóa Gemini API</label>
         <input id="apiKeyInput" class="control mono mt-2 w-full px-4 text-sm" type="password" placeholder="AIzaSy..." autocomplete="off">
         <div class="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--primary)_25%,var(--border))] bg-[color-mix(in_srgb,var(--primary)_6%,var(--surface))] p-4 text-sm leading-relaxed text-[var(--text-secondary)]"><strong class="text-[var(--text-primary)]">Cách lấy khóa:</strong> mở <a class="font-bold text-[var(--primary)] underline" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>, tạo API key, rồi dán vào ô trên.</div>
         <div class="mt-6 flex flex-col-reverse gap-2 border-t border-[var(--border)] pt-5 sm:flex-row sm:justify-end"><button id="cancelApiKeyBtn" type="button" class="secondary-btn px-4 text-sm">Hủy</button><button id="saveApiKeyBtn" type="button" class="primary-btn px-5 text-sm">Lưu khóa</button></div>
