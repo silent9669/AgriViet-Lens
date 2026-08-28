@@ -1,661 +1,490 @@
 <!DOCTYPE html>
-<html lang="vi" class="dark">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AgriViet Lens — Trợ Lý Bác Sĩ Cây Trồng & Cảnh Báo Dịch Hại Nông Nghiệp Đa Phương Thức</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="theme-color" content="#F8FAF9">
+  <title>AgriViet Lens — Trợ lý đồng ruộng</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            jade: {
-              950: '#06130c',
-              900: '#0b1a12',
-              850: '#0e2419',
-              800: '#133022',
-              700: '#1c4531',
-              600: '#235c42',
-              500: '#10b981',
-              400: '#34d399',
-              300: '#6ee7b7',
+    tailwind = {
+      config: {
+        darkMode: ['selector', '[data-theme="dark"]'],
+        theme: {
+          extend: {
+            colors: {
+              canvas: '#F8FAF9',
+              surface: '#FFFFFF',
+              ink: '#0F172A',
+              muted: '#475569',
+              field: '#047857',
+              fieldDark: '#065F46',
+              harvest: '#D97706',
+              alert: '#DC2626',
+              night: '#091A11',
+              nightSurface: '#10261A',
+              nightBorder: '#1B3D2B'
             },
-            terracotta: {
-              900: '#451a03',
-              600: '#d97706',
-              500: '#f59e0b',
-              400: '#fbbf24',
+            fontFamily: {
+              sans: ['"Be Vietnam Pro"', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'monospace']
             }
-          },
-          fontFamily: {
-            sans: ['"Be Vietnam Pro"', '"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-            mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
           }
         }
       }
-    }
+    };
   </script>
-
-  <!-- Google Fonts: Be Vietnam Pro, Plus Jakarta Sans, JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
-
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Hallmark · macrostructure: Workbench · tone: utilitarian · anchor hue: emerald */
+    :root {
+      --canvas: #F8FAF9;
+      --surface: #FFFFFF;
+      --surface-raised: #FFFFFF;
+      --surface-soft: #F1F5F9;
+      --border: #E2E8F0;
+      --border-strong: #CBD5E1;
+      --primary: #047857;
+      --primary-dark: #065F46;
+      --accent: #D97706;
+      --alert: #DC2626;
+      --text-primary: #0F172A;
+      --text-secondary: #475569;
+      --text-subtle: #64748B;
+      --focus: #047857;
+      --shadow: rgba(15, 23, 42, 0.08);
+      --shadow-strong: rgba(15, 23, 42, 0.14);
+      --font-body: "Be Vietnam Pro", sans-serif;
+      --font-mono: "JetBrains Mono", monospace;
+      --radius-card: 18px;
+      --radius-control: 12px;
+    }
+
+    html[data-theme="dark"] {
+      --canvas: #091A11;
+      --surface: #10261A;
+      --surface-raised: #15301F;
+      --surface-soft: #0D2116;
+      --border: #1B3D2B;
+      --border-strong: #2D5A3E;
+      --primary: #047857;
+      --primary-dark: #065F46;
+      --accent: #D97706;
+      --alert: #DC2626;
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --text-subtle: #A8B6C7;
+      --focus: #34D399;
+      --shadow: rgba(0, 0, 0, 0.22);
+      --shadow-strong: rgba(0, 0, 0, 0.38);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; overflow-x: clip; }
     body {
-      font-family: 'Be Vietnam Pro', sans-serif;
-      background-color: #06130c;
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      line-height: 1.5;
+      transition: background-color 180ms ease, color 180ms ease;
     }
-    .font-mono-data {
-      font-family: 'JetBrains Mono', monospace;
+    button, input, select { font: inherit; }
+    button { min-height: 44px; }
+    button:disabled { cursor: not-allowed; opacity: 0.56; }
+    :focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
     }
-    /* Laser beam animation for scanning preview */
-    @keyframes laser-sweep {
-      0% { top: 0%; opacity: 0.8; }
-      50% { top: 90%; opacity: 1; }
-      100% { top: 0%; opacity: 0.8; }
+    .mono { font-family: var(--font-mono); }
+    .app-shell { min-height: 100vh; }
+    .surface {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px var(--shadow);
     }
-    .animate-laser {
-      animation: laser-sweep 2.2s infinite ease-in-out;
+    .surface-soft {
+      background: var(--surface-soft);
+      border: 1px solid var(--border);
     }
-    /* Ambient organic backdrop pattern */
-    .bg-topo-pattern {
-      background-image: radial-gradient(#10b981 0.75px, transparent 0.75px), radial-gradient(#10b981 0.75px, #06130c 0.75px);
-      background-size: 30px 30px;
-      background-position: 0 0, 15px 15px;
-      background-opacity: 0.03;
+    .topbar {
+      background: color-mix(in srgb, var(--surface) 94%, transparent);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      color: #FFFFFF;
+      background: var(--primary);
+      border-radius: 12px;
+      font-size: 1.25rem;
+      box-shadow: 0 5px 0 var(--primary-dark);
+    }
+    .control {
+      min-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      background: var(--surface);
+      color: var(--text-primary);
+      transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, transform 150ms ease;
+    }
+    .control:hover { border-color: var(--border-strong); background: var(--surface-soft); }
+    .control:active { transform: translateY(1px); }
+    .primary-btn {
+      min-height: 48px;
+      border-radius: var(--radius-control);
+      background: var(--primary);
+      color: #FFFFFF;
+      font-weight: 800;
+      transition: background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+      box-shadow: 0 4px 0 var(--primary-dark);
+    }
+    .primary-btn:hover { background: var(--primary-dark); }
+    .primary-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--primary-dark); }
+    .secondary-btn {
+      min-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      background: var(--surface);
+      color: var(--text-primary);
+      font-weight: 700;
+      transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+    }
+    .secondary-btn:hover { border-color: var(--primary); background: var(--surface-soft); }
+    .secondary-btn:active { transform: translateY(1px); }
+    .tab-button {
+      min-height: 48px;
+      border-bottom: 3px solid transparent;
+      color: var(--text-secondary);
+      font-weight: 700;
+      white-space: nowrap;
+      transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+    }
+    .tab-button:hover { color: var(--primary); background: var(--surface-soft); }
+    .tab-button.active { color: var(--primary); border-color: var(--primary); }
+    .dropzone {
+      min-height: 390px;
+      border: 2px dashed var(--border-strong);
+      border-radius: 16px;
+      background: var(--surface-soft);
+      transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+    }
+    .dropzone:hover, .dropzone.drag-active { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--surface-soft)); }
+    .dropzone.drag-active { transform: scale(1.005); }
+    .upload-icon {
+      width: 72px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border));
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+      color: var(--primary);
+      font-size: 2rem;
+    }
+    .preview-frame {
+      min-height: 250px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #0B1F14;
+    }
+    .preview-frame img { max-height: 290px; width: 100%; object-fit: contain; }
+    .section-label {
+      color: var(--text-subtle);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .section-title { color: var(--text-primary); font-weight: 800; letter-spacing: -0.02em; }
+    .status-pill { border-radius: 999px; border: 1px solid var(--border); font-size: 0.75rem; font-weight: 800; }
+    .status-pill.alert { color: var(--alert); border-color: color-mix(in srgb, var(--alert) 30%, var(--border)); background: color-mix(in srgb, var(--alert) 8%, var(--surface)); }
+    .status-pill.warning { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+    .status-pill.ok { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+    .meter-track { height: 9px; overflow: hidden; border-radius: 99px; background: var(--surface-soft); border: 1px solid var(--border); }
+    .meter-fill { height: 100%; border-radius: inherit; background: var(--primary); }
+    .treatment-tab {
+      min-height: 44px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 800;
+      transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+    }
+    .treatment-tab:hover { border-color: var(--primary); color: var(--primary); }
+    .treatment-tab.active { background: var(--primary); border-color: var(--primary); color: #FFFFFF; }
+    .tank-btn { min-height: 44px; min-width: 72px; border: 1px solid var(--border); border-radius: 10px; color: var(--text-secondary); font-weight: 800; transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease; }
+    .tank-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .tank-btn:active { transform: translateY(1px); }
+    .tank-btn.active { background: var(--primary); border-color: var(--primary); color: #FFFFFF; }
+    .voice-record {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      border: 8px solid color-mix(in srgb, var(--primary) 14%, var(--surface));
+      background: var(--primary);
+      color: #FFFFFF;
+      box-shadow: 0 0 0 1px var(--primary), 0 8px 0 var(--primary-dark);
+      font-size: 2rem;
+      transition: background-color 150ms ease, transform 150ms ease;
+    }
+    .voice-record:hover { background: var(--primary-dark); }
+    .voice-record:active { transform: translateY(3px); box-shadow: 0 0 0 1px var(--primary), 0 5px 0 var(--primary-dark); }
+    .chat-bubble { border-radius: 14px; border: 1px solid var(--border); background: var(--surface-soft); }
+    .chat-bubble.user { background: var(--primary); border-color: var(--primary); color: #FFFFFF; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
+    table { min-width: 720px; }
+    th { color: var(--text-subtle); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; }
+    td, th { border-bottom: 1px solid var(--border); padding: 14px 16px; text-align: left; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: var(--surface-soft); }
+    .modal-backdrop { background: rgba(9, 26, 17, 0.68); backdrop-filter: blur(5px); }
+    .modal-card { max-height: calc(100vh - 32px); overflow-y: auto; }
+    .toast { border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); box-shadow: 0 12px 32px var(--shadow-strong); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    @media (max-width: 767px) {
+      .dropzone { min-height: 330px; }
+      .voice-record { width: 96px; height: 96px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
     }
   </style>
 </head>
-<body class="text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white bg-topo-pattern">
-
-  <!-- ================================================================= -->
-  <!-- TOP NAVIGATION & APP HEADER                                        -->
-  <!-- ================================================================= -->
-  <header class="sticky top-0 z-40 bg-jade-950/90 backdrop-blur-lg border-b border-jade-800/80 shadow-2xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-
-      <!-- Brand Logo -->
-      <div class="flex items-center gap-3.5">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-amber-500 flex items-center justify-center shadow-lg shadow-emerald-950/80 text-white font-extrabold text-xl ring-1 ring-emerald-400/30">
-          🌾
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-emerald-300 via-teal-200 to-amber-200 bg-clip-text text-transparent">AgriViet Lens</span>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono-data">AI Riser 2026</span>
-          </div>
-          <p class="text-[11px] text-emerald-400/70 hidden sm:block font-medium">Bác Sĩ Cây Trồng & Radar Cảnh Báo Vi Khí Hậu Đa Phương Thức</p>
-        </div>
-      </div>
-
-      <!-- Quick Crop Selector & API Key Settings -->
-      <div class="flex items-center gap-2 sm:gap-3">
-
-        <!-- Target Crop Selector Dropdown -->
-        <div class="relative hidden sm:flex items-center bg-jade-900/90 px-3 py-1.5 rounded-xl border border-jade-800">
-          <label for="cropSelector" class="text-xs text-emerald-300/80 mr-2 font-semibold">Cây trồng:</label>
-          <select id="cropSelector" class="bg-transparent text-slate-100 text-xs font-bold focus:outline-none cursor-pointer">
-            <option value="rice" class="bg-jade-900 text-slate-100">🌾 Lúa Nước (Rice)</option>
-            <option value="durian" class="bg-jade-900 text-slate-100">🌳 Sầu Riêng (Durian)</option>
-            <option value="coffee" class="bg-jade-900 text-slate-100">☕ Cà Phê (Coffee)</option>
-            <option value="dragonfruit" class="bg-jade-900 text-slate-100">🌵 Thanh Long (Dragon Fruit)</option>
-            <option value="general" class="bg-jade-900 text-slate-100">🌿 Cây Trồng Khác</option>
+<body>
+  <div class="app-shell">
+    <header class="topbar sticky top-0 z-40">
+      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
+        <a href="#tab-scanner" class="flex min-w-0 items-center gap-3" aria-label="AgriViet Lens, về trang chẩn đoán">
+          <span class="brand-mark" aria-hidden="true">🌾</span>
+          <span class="min-w-0">
+            <span class="block truncate text-lg font-extrabold tracking-tight sm:text-xl">AgriViet Lens</span>
+            <span class="hidden text-xs text-[var(--text-secondary)] sm:block">Trợ lý đồng ruộng, quyết định rõ ràng</span>
+          </span>
+        </a>
+        <div class="ml-auto flex items-center gap-2">
+          <label class="sr-only" for="cropSelect">Cây trồng đang theo dõi</label>
+          <select id="cropSelect" class="control max-w-[148px] px-3 text-sm font-semibold sm:max-w-none" aria-label="Chọn cây trồng">
+            <option value="rice">🌾 Lúa nước</option>
+            <option value="durian">🥑 Sầu riêng</option>
+            <option value="coffee">☕ Cà phê</option>
+            <option value="dragonfruit">🍈 Thanh long</option>
+            <option value="general">🌿 Cây trồng khác</option>
           </select>
+          <button id="themeToggleBtn" type="button" class="control inline-flex items-center justify-center px-3 text-lg" aria-label="Đổi giao diện sáng tối" title="Đổi giao diện sáng tối">☼</button>
+          <button id="apiKeyBtn" type="button" class="secondary-btn px-3 text-sm sm:px-4">Cài API</button>
         </div>
-
-        <!-- API Key Status Modal Trigger -->
-        <button id="btnApiKeyModal" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-jade-900 hover:bg-jade-850 border border-jade-800 text-xs text-slate-200 transition-all shadow-sm">
-          <div id="apiKeyBadge" class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 border border-emerald-800/60">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Gemini Free Tier
-          </div>
-          <span class="hidden md:inline text-slate-400 text-xs font-semibold">⚙️ Cài đặt</span>
-        </button>
-
       </div>
-    </div>
+      <nav class="border-t border-[var(--border)]" aria-label="Khu vực làm việc">
+        <div class="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8">
+          <button type="button" class="tab-button active px-3 text-sm sm:px-5" data-tab="scanner" aria-controls="tab-scanner" aria-selected="true">🔬 Chẩn đoán</button>
+          <button type="button" class="tab-button px-3 text-sm sm:px-5" data-tab="voice" aria-controls="voiceTab" aria-selected="false">🎙️ Trợ lý giọng nói</button>
+          <button type="button" class="tab-button px-3 text-sm sm:px-5" data-tab="weather" aria-controls="weatherTab" aria-selected="false">⛅ Radar thời tiết</button>
+          <button type="button" class="tab-button px-3 text-sm sm:px-5" data-tab="logbook" aria-controls="logbookTab" aria-selected="false">📒 Nhật ký</button>
+        </div>
+      </nav>
+    </header>
 
-    <!-- PRIMARY APP NAVIGATION PILLS -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto py-2.5 border-t border-jade-800/60 no-scrollbar">
-      <button data-tab="scanner" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-2 transition-all shrink-0">
-        🔬 <span>Chẩn Đoán Bệnh Lá (AI Camera)</span>
-      </button>
-      <button data-tab="voice" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-jade-900/60 flex items-center gap-2 transition-all shrink-0">
-        🎙️ <span>Bác Sĩ Cây Trồng (Voice Copilot)</span>
-      </button>
-      <button data-tab="weather" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-jade-900/60 flex items-center gap-2 transition-all shrink-0">
-        ⛅ <span>Dự Báo & Cảnh Báo Dịch Hại</span>
-      </button>
-      <button data-tab="logbook" class="nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-jade-900/60 flex items-center gap-2 transition-all shrink-0">
-        📜 <span>Nhật Ký Đồng Ruộng</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- ================================================================= -->
-  <!-- MAIN CONTENT CONTAINER                                            -->
-  <!-- ================================================================= -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-
-    <!-- ================================================================= -->
-    <!-- TAB 1: AI CAMERA SCANNER & PATHOLOGY DIAGNOSIS                     -->
-    <!-- ================================================================= -->
-    <div id="pane_scanner" class="space-y-6">
-
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        <!-- LEFT COLUMN: Camera/Uploader Viewfinder & Preset Gallery -->
-        <div class="lg:col-span-5 space-y-5">
-
-          <!-- Viewfinder Camera / Upload Box -->
-          <div class="bg-jade-900/90 border border-jade-800 rounded-3xl p-5 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <h2 class="font-bold text-sm text-slate-100 uppercase tracking-wider font-mono-data">Khu Vực Quét Bệnh Lá</h2>
-              </div>
-              <span class="text-xs text-emerald-400/80 font-mono-data">JPG, PNG, WebP</span>
-            </div>
-
-            <!-- Interactive Drop Zone with HUD -->
-            <div id="uploadDropZone" class="relative group border-2 border-dashed border-jade-700 hover:border-emerald-500/80 rounded-2xl p-4 text-center cursor-pointer transition-all bg-jade-950/80 hover:bg-jade-900/60 flex flex-col items-center justify-center min-h-[240px] overflow-hidden">
-
-              <!-- Hidden File Input -->
-              <input type="file" id="leafFileInput" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20" />
-
-              <!-- Upload Placeholder -->
-              <div id="uploadPlaceholder" class="space-y-3 pointer-events-none z-10">
-                <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform border border-emerald-500/20 shadow-inner">
-                  🍃
-                </div>
-                <div class="font-bold text-sm text-slate-100">Kéo Thả Ảnh Hoặc Chạm Để Tải</div>
-                <div class="text-xs text-slate-400">Tự động nén ảnh chuẩn y khoa nông nghiệp</div>
-              </div>
-
-              <!-- Image Preview -->
-              <img id="imagePreview" src="" alt="Xem trước ảnh bệnh lá" class="hidden max-h-[260px] w-full rounded-xl object-contain z-10 shadow-lg" />
-
-              <!-- HUD Scanning Laser Effect -->
-              <div id="scanLaserBeam" class="hidden absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_15px_#10b981] animate-laser z-15 pointer-events-none"></div>
-
-              <!-- HUD Target Reticle Overlay -->
-              <div id="scannerHudOverlay" class="hidden absolute inset-4 border border-emerald-500/20 rounded-xl pointer-events-none z-10 flex flex-col justify-between p-2">
-                <div class="flex justify-between text-[10px] font-mono-data text-emerald-400/70">
-                  <span>[SYS.CAM.READY]</span>
-                  <span>[MULTIMODAL.AI]</span>
-                </div>
-                <div class="flex justify-between text-[10px] font-mono-data text-emerald-400/70">
-                  <span>[VIETGAP.STD]</span>
-                  <span>[480x360.HQ]</span>
-                </div>
-              </div>
-
-            </div>
-
-            <!-- Run Scan Primary Button -->
-            <button id="btnRunScan" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-xl shadow-emerald-950/60 flex items-center justify-center gap-2 transition-all transform active:scale-98 border border-emerald-400/20">
-              🔬 <span>Phân Tích Bệnh Lý Cây Trồng (AI Scan)</span>
-            </button>
-          </div>
-
-          <!-- Instant Preset Demo Gallery for Judges -->
-          <div class="bg-jade-900/90 border border-jade-800 rounded-3xl p-5 shadow-2xl space-y-3.5">
-            <div class="flex items-center justify-between">
-              <h3 class="font-extrabold text-sm text-amber-300 flex items-center gap-1.5">
-                ⚡ <span>Mẫu Thử Nghiệm Nhanh Cho Ban Giám Khảo</span>
-              </h3>
-              <span class="text-[11px] font-bold text-emerald-400 font-mono-data">1-CHẠM THỬ NGAY</span>
-            </div>
-            <p class="text-xs text-slate-400 leading-relaxed">
-              Trải nghiệm ngay năng lực chẩn đoán trên 4 ca bệnh điển hình của nông nghiệp Việt Nam:
-            </p>
-
-            <div id="presetContainer" class="grid grid-cols-1 gap-2.5">
-              <!-- Dynamically populated via JS -->
-            </div>
-          </div>
-
+    <main class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <section id="tab-scanner" class="space-y-6" aria-labelledby="scannerHeading">
+        <div id="offlineIndicator" class="flex items-start gap-3 rounded-xl border border-[color-mix(in_srgb,var(--accent)_30%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_8%,var(--surface))] px-4 py-3 text-sm" role="status">
+          <span aria-hidden="true">◌</span>
+          <p><strong>Đang dùng chế độ ngoại tuyến.</strong> Bạn vẫn có thể thử 4 ca bệnh mẫu; thêm Gemini API để phân tích ảnh mới.</p>
         </div>
 
-        <!-- RIGHT COLUMN: Detailed Pathology Report & Dosage Calculator -->
-        <div class="lg:col-span-7 space-y-5">
+        <div class="grid gap-6 lg:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.18fr)]">
+          <div class="space-y-6">
+            <section class="surface rounded-[var(--radius-card)] p-5 sm:p-6" aria-labelledby="scannerHeading">
+              <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p class="section-label mb-1">Bước 1 · Gửi mẫu</p>
+                  <h1 id="scannerHeading" class="section-title text-2xl sm:text-3xl">Chụp đúng, xử lý nhanh</h1>
+                </div>
+                <span class="mono rounded-full bg-[var(--surface-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-secondary)]">JPG · PNG</span>
+              </div>
 
-          <!-- Loading Spinner -->
-          <div id="diagnosisLoading" class="hidden bg-jade-900/90 border border-jade-800 rounded-3xl p-10 text-center space-y-4 shadow-2xl">
-            <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl animate-spin border border-emerald-500/30">
-              ⚙️
-            </div>
-            <div class="space-y-1.5">
-              <div class="font-bold text-base text-slate-100">Bác Sĩ Cây Trồng Gemini Đang Chẩn Đoán...</div>
-              <div class="text-xs text-slate-400">Đang quét triệu chứng hình ảnh & đối chiếu dược tính VietGAP...</div>
-            </div>
+              <div id="dropzone" class="dropzone flex flex-col items-center justify-center p-4 text-center" tabindex="0" role="button" aria-label="Tải ảnh cây trồng lên hoặc kéo thả vào đây">
+                <input id="fileInput" class="sr-only" type="file" accept="image/*">
+                <input id="cameraInput" class="sr-only" type="file" accept="image/*" capture="environment">
+                <div id="uploadPrompt" class="flex flex-col items-center gap-3">
+                  <div class="upload-icon" aria-hidden="true">🍃</div>
+                  <div>
+                    <p class="font-bold">Kéo ảnh vào đây hoặc chạm để tải</p>
+                    <p class="mt-1 text-sm text-[var(--text-secondary)]">Ảnh lá, thân hoặc quả · tối đa 10 MB</p>
+                  </div>
+                  <div class="flex flex-wrap justify-center gap-2">
+                    <button id="cameraTrigger" type="button" class="secondary-btn px-3 text-sm">📷 Chụp tại ruộng</button>
+                    <button id="uploadTrigger" type="button" class="secondary-btn px-3 text-sm">Chọn từ máy</button>
+                  </div>
+                  <p class="mono text-[11px] text-[var(--text-subtle)]">Bạn cũng có thể dán ảnh từ clipboard (Ctrl/Cmd + V)</p>
+                </div>
+                <div id="previewContainer" class="hidden w-full">
+                  <div class="preview-frame">
+                    <img id="imagePreview" src="" alt="Ảnh mẫu cây trồng đã chọn">
+                  </div>
+                  <p class="mt-3 text-sm font-semibold text-[var(--primary)]">Ảnh đã sẵn sàng để chẩn đoán</p>
+                </div>
+              </div>
+
+              <button id="analyzeBtn" type="button" class="primary-btn mt-4 flex w-full items-center justify-center gap-2 px-4 text-base" disabled>🔬 Chẩn Đoán Ngay</button>
+            </section>
+
+            <section class="surface rounded-[var(--radius-card)] p-5 sm:p-6" aria-labelledby="presetHeading">
+              <div class="mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <p class="section-label mb-1">Thử nhanh</p>
+                  <h2 id="presetHeading" class="section-title text-lg">Bốn ca bệnh quen thuộc</h2>
+                </div>
+                <span class="mono text-xs text-[var(--text-subtle)]">OFFLINE DEMO</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button class="preset-btn secondary-btn px-2 text-sm" data-preset="rice">🌾 Lúa Nước</button>
+                <button class="preset-btn secondary-btn px-2 text-sm" data-preset="durian">🥑 Sầu Riêng</button>
+                <button class="preset-btn secondary-btn px-2 text-sm" data-preset="coffee">☕ Cà Phê</button>
+                <button class="preset-btn secondary-btn px-2 text-sm" data-preset="dragonfruit">🍈 Thanh Long</button>
+              </div>
+            </section>
           </div>
 
-          <!-- Diagnosis Result Report Card -->
-          <div id="diagnosisResultCard" class="bg-jade-900/95 border border-jade-800 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6 transition-all">
+          <div class="space-y-6">
+            <section id="loadingSpinner" class="surface hidden rounded-[var(--radius-card)] p-10 text-center" aria-live="polite">
+              <div class="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--primary)]"></div>
+              <p class="font-bold">Đang đối chiếu triệu chứng...</p>
+              <p class="mt-1 text-sm text-[var(--text-secondary)]">Giữ nguyên màn hình trong giây lát.</p>
+            </section>
 
-            <!-- Result Top Heading -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-jade-800">
-              <div class="space-y-1">
-                <div class="flex items-center gap-2">
-                  <span id="resCropName" class="text-xs font-bold px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wider font-mono-data">Lúa Nước</span>
-                  <div id="resSeverityContainer">
-                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Mức Độ: Nghiêm Trọng</span>
+            <section id="resultsSection" class="surface hidden rounded-[var(--radius-card)] p-5 sm:p-7" aria-labelledby="diseaseName" aria-live="polite">
+              <div class="flex flex-col gap-5 border-b border-[var(--border)] pb-6 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                  <div class="mb-3 flex flex-wrap items-center gap-2">
+                    <span id="cropName" class="rounded-full bg-[color-mix(in_srgb,var(--primary)_9%,var(--surface))] px-3 py-1 text-xs font-bold text-[var(--primary)]">Lúa nước</span>
+                    <span id="severityBadge" class="status-pill alert px-3 py-1">Mức độ: Nghiêm trọng</span>
+                  </div>
+                  <h2 id="diseaseName" class="section-title text-2xl leading-tight sm:text-3xl">Bệnh đạo ôn lá</h2>
+                  <p id="diseaseNameSci" class="mt-2 text-sm text-[var(--text-secondary)]"><em>Pyricularia oryzae</em></p>
+                </div>
+                <div class="min-w-[142px] rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 sm:text-right">
+                  <p class="section-label">Độ tin cậy</p>
+                  <p id="confidenceScore" class="mono mt-1 text-3xl font-medium text-[var(--primary)]">96%</p>
+                  <div class="meter-track mt-2" aria-hidden="true"><div id="confidenceMeter" class="meter-fill" style="width: 96%"></div></div>
+                </div>
+              </div>
+
+              <div class="grid gap-3 py-6 sm:grid-cols-2">
+                <article class="surface-soft rounded-xl p-4">
+                  <p class="mb-2 text-sm font-extrabold text-[var(--primary)]">🔎 Triệu chứng nhìn thấy</p>
+                  <p id="symptomsSummary" class="text-sm leading-relaxed text-[var(--text-secondary)]">Các dấu hiệu quan sát được sẽ hiển thị tại đây.</p>
+                </article>
+                <article class="surface-soft rounded-xl p-4">
+                  <p class="mb-2 text-sm font-extrabold text-[var(--accent)]">⚠ Nguyên nhân chính</p>
+                  <p id="primaryCauses" class="text-sm leading-relaxed text-[var(--text-secondary)]">Điều kiện phát sinh bệnh sẽ hiển thị tại đây.</p>
+                </article>
+              </div>
+
+              <div class="border-t border-[var(--border)] pt-5">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p class="section-label mb-1">Bước 2 · Chọn phác đồ</p>
+                    <h3 class="section-title text-lg">Điều trị theo mức độ ruộng</h3>
+                  </div>
+                  <div class="flex gap-2" role="tablist" aria-label="Loại phác đồ điều trị">
+                    <button id="organicTab" type="button" class="treatment-tab active px-3" role="tab" aria-selected="true">🌿 Sinh học</button>
+                    <button id="chemicalTab" type="button" class="treatment-tab px-3" role="tab" aria-selected="false">⚗ Hóa học</button>
                   </div>
                 </div>
-                <h1 id="resDiseaseVi" class="font-extrabold text-2xl sm:text-3xl text-slate-100 tracking-tight">Bệnh Đạo Ôn Lá (Cháy lá lúa)</h1>
-                <p id="resDiseaseScientific" class="text-xs font-mono-data text-emerald-400/80 italic font-medium">Pyricularia oryzae (Magnaporthe oryzae)</p>
-              </div>
 
-              <!-- Confidence Score Meter -->
-              <div class="bg-jade-950 p-3.5 rounded-2xl border border-jade-800 text-center sm:text-right min-w-[140px] shadow-inner">
-                <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider font-mono-data">ĐỘ TIN CẬY AI</div>
-                <div id="resConfidence" class="text-3xl font-black text-emerald-400 font-mono-data">96%</div>
-                <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden mt-1.5">
-                  <div id="resConfidenceBar" class="bg-gradient-to-r from-teal-500 to-emerald-400 h-full rounded-full" style="width: 96%"></div>
+                <div id="organicPanel" class="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--primary)_26%,var(--border))] bg-[color-mix(in_srgb,var(--primary)_6%,var(--surface))] p-4 sm:p-5" role="tabpanel">
+                  <p id="organicTreatmentContent" class="text-sm leading-relaxed text-[var(--text-secondary)]">Ưu tiên vệ sinh vườn, điều chỉnh nước và chế phẩm đối kháng theo hướng dẫn.</p>
+                  <ul id="organicSteps" class="mt-4 space-y-3 text-sm text-[var(--text-secondary)]"></ul>
+                  <p class="mt-4 border-t border-[var(--border)] pt-3 text-sm"><strong>Chế phẩm gợi ý:</strong> <span id="organicBioProducts">Trichoderma spp., Bacillus subtilis</span></p>
                 </div>
-              </div>
-            </div>
 
-            <!-- Visual Symptoms & Pathology Causes -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="bg-jade-950/80 p-4.5 rounded-2xl border border-jade-800/80 space-y-2">
-                <div class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                  🔍 <span>Triệu Chứng Lâm Sàng:</span>
-                </div>
-                <p id="resSymptoms" class="text-xs text-slate-300 leading-relaxed font-medium">
-                  Vết bệnh hình thoi đặc trưng, tâm xám trắng viền nâu sẫm trên phiến lá lúa.
-                </p>
-              </div>
-
-              <div class="bg-jade-950/80 p-4.5 rounded-2xl border border-jade-800/80 space-y-2">
-                <div class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                  ⚠️ <span>Căn Nguyên & Điều Kiện Bùng Phát:</span>
-                </div>
-                <p id="resCauses" class="text-xs text-slate-300 leading-relaxed font-medium">
-                  Nấm phát triển bùng phát do sương mù ẩm độ cao (>85%) và ruộng bón thừa đạm.
-                </p>
-              </div>
-            </div>
-
-            <!-- DUAL TREATMENT ROADMAP TABS -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <h3 class="font-extrabold text-sm text-slate-100 flex items-center gap-2">
-                  🧪 <span>Phác Đồ Điều Trị Đề Xuất</span>
-                </h3>
-
-                <!-- Sub-Tabs: Organic vs Chemical -->
-                <div class="flex items-center bg-jade-950 p-1 rounded-xl border border-jade-800">
-                  <button id="tabOrgBtn" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white shadow-md flex items-center gap-1.5 transition-all">
-                    🌿 <span>Sinh Học / VietGAP</span>
-                  </button>
-                  <button id="tabChemBtn" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-900/60 text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-all">
-                    ⚗️ <span>Hóa Học Đặc Trị</span>
-                  </button>
+                <div id="chemicalPanel" class="mt-4 hidden rounded-xl border border-[color-mix(in_srgb,var(--accent)_30%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_7%,var(--surface))] p-4 sm:p-5" role="tabpanel" aria-hidden="true">
+                  <p id="chemicalTreatmentContent" class="text-sm leading-relaxed text-[var(--text-secondary)]">Chỉ dùng thuốc nằm trong danh mục được phép và tuân thủ nhãn sản phẩm.</p>
+                  <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div class="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"><p class="section-label">Hoạt chất</p><p id="activeIngredients" class="mt-1 text-sm font-bold">Đang cập nhật</p></div>
+                    <div class="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"><p class="section-label">Thời gian cách ly</p><p><span id="quarantineDays" class="mono mt-1 inline-block text-sm font-medium text-[var(--accent)]">14 ngày</span></p></div>
+                  </div>
+                  <p id="dosageInstructions" class="mt-4 text-sm font-semibold text-[var(--text-primary)]">Pha theo đúng liều ghi trên nhãn.</p>
                 </div>
               </div>
 
-              <!-- Organic Treatment Content -->
-              <div id="paneOrganic" class="bg-emerald-950/20 border border-emerald-800/40 rounded-2xl p-5 space-y-3.5">
-                <div class="flex items-center justify-between text-xs font-bold text-emerald-400">
-                  <span>🍃 Giải Pháp An Toàn Sinh Học & Khôi Phục Hệ Vi Sinh</span>
-                  <span class="bg-emerald-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-mono-data border border-emerald-500/30">VietGAP Approved</span>
-                </div>
-                <ul id="organicSteps" class="space-y-2.5 text-xs text-slate-200">
-                  <!-- Rendered via JS -->
-                </ul>
-                <div class="pt-3 border-t border-emerald-900/40 flex items-center gap-2 text-xs">
-                  <span class="text-slate-400 font-semibold">Chế phẩm khuyên dùng:</span>
-                  <span id="organicBioProducts" class="font-bold text-emerald-300 font-mono-data">Trichoderma harzianum, Bacillus subtilis</span>
-                </div>
-              </div>
-
-              <!-- Chemical Treatment Content -->
-              <div id="paneChemical" class="hidden bg-amber-950/20 border border-amber-800/40 rounded-2xl p-5 space-y-3.5">
-                <div class="flex items-center justify-between text-xs font-bold text-amber-400">
-                  <span>⚠️ Giải Pháp Hóa Học Đặc Trị (Khi Vết Bệnh Lan Rộng)</span>
-                  <div class="flex items-center gap-1.5 bg-amber-500/20 px-2.5 py-0.5 rounded-full text-[11px] text-amber-300 border border-amber-500/30 font-mono-data">
-                    <span>Cách ly (PHI):</span> <b id="chemQuarantine">14 Ngày</b>
+              <div class="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div><p class="section-label mb-1">Tính nhanh</p><h3 class="font-extrabold">Liều cho bình phun</h3></div>
+                  <div id="tankCapacityBtns" class="flex flex-wrap gap-2" aria-label="Chọn dung tích bình">
+                    <button type="button" class="tank-btn active px-3" data-capacity="16">16L</button>
+                    <button type="button" class="tank-btn px-3" data-capacity="25">25L</button>
+                    <button type="button" class="tank-btn px-3" data-capacity="200">200L</button>
                   </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div class="bg-jade-950/70 p-3 rounded-xl border border-jade-800">
-                    <span class="text-slate-400 block mb-1 font-semibold">Hoạt chất đặc trị:</span>
-                    <span id="chemActive" class="font-bold text-slate-100 font-mono-data">Tricyclazole, Isoprothiolane</span>
-                  </div>
-                  <div class="bg-jade-950/70 p-3 rounded-xl border border-jade-800">
-                    <span class="text-slate-400 block mb-1 font-semibold">Liều lượng pha bình:</span>
-                    <span id="chemDosage" class="font-bold text-slate-100 font-mono-data">Pha 20-25g cho bình 25 lít</span>
-                  </div>
-                </div>
-                <div class="text-[11px] text-slate-400 italic" id="chemSafety">
-                  * Phun khi trời ráo sương. Mang đồ bảo hộ lao động đầy đủ.
-                </div>
-              </div>
-            </div>
-
-            <!-- TACTILE TREATMENT DOSAGE CALCULATOR WIDGET -->
-            <div class="bg-jade-950/90 border border-jade-800/90 rounded-2xl p-5 space-y-3">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
-                  <span class="text-base">🧮</span>
-                  <span class="font-bold text-xs text-slate-200">Công Cụ Tính Liều Lượng Pha Bình Thực Tế:</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                  <button data-capacity="16" class="tank-btn px-3 py-1 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 transition-all">
-                    Bình Đeo 16L
-                  </button>
-                  <button data-capacity="25" class="tank-btn px-3 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-500 transition-all">
-                    Bình Máy 25L
-                  </button>
-                  <button data-capacity="200" class="tank-btn px-3 py-1 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 transition-all">
-                    Phuy Lớn 200L
-                  </button>
-                </div>
+                <div id="tankDosageResult" class="mono mt-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm font-medium text-[var(--primary)]">Chọn dung tích bình để xem liều pha.</div>
               </div>
 
-              <!-- Calculated Output Display -->
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div class="bg-jade-900/60 p-2.5 rounded-xl border border-jade-800 text-center">
-                  <div class="text-[10px] text-slate-400 font-semibold uppercase">Lượng Thuốc Cần Đong</div>
-                  <div id="calcDoseAmount" class="font-mono-data font-black text-sm text-emerald-300 mt-0.5">25 g (hoặc ml)</div>
-                </div>
-                <div class="bg-jade-900/60 p-2.5 rounded-xl border border-jade-800 text-center">
-                  <div class="text-[10px] text-slate-400 font-semibold uppercase">Lượng Nước Cần Pha</div>
-                  <div id="calcWaterAmount" class="font-mono-data font-black text-sm text-cyan-300 mt-0.5">25 Lít Nước</div>
-                </div>
-                <div class="bg-jade-900/60 p-2.5 rounded-xl border border-jade-800 text-center">
-                  <div class="text-[10px] text-slate-400 font-semibold uppercase">Diện Tích / Số Cây Phủ</div>
-                  <div id="calcCoverageArea" class="font-mono-data font-black text-sm text-amber-300 mt-0.5">~ 500 m² tán lá</div>
-                </div>
+              <div class="mt-5 rounded-xl border border-[var(--border)] p-4">
+                <h3 class="font-extrabold">🛡 Phòng bệnh mùa vụ tới</h3>
+                <ul id="seasonalPrevention" class="mt-3 grid gap-3 text-sm text-[var(--text-secondary)] sm:grid-cols-2"></ul>
               </div>
-            </div>
-
-            <!-- Seasonal Prevention Checklist -->
-            <div class="bg-jade-950/70 p-4.5 rounded-2xl border border-jade-800 space-y-2">
-              <h4 class="font-bold text-xs text-emerald-300 flex items-center gap-1.5">
-                🛡️ <span>Biện Pháp Phòng Ngừa Canh Tác Mùa Vụ Tới:</span>
-              </h4>
-              <ul id="resPreventionList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
-                <!-- Rendered via JS -->
-              </ul>
-            </div>
-
-            <!-- Action Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-jade-800">
-              <button id="btnSaveLogbook" class="px-4 py-2.5 rounded-xl bg-jade-850 hover:bg-jade-800 text-slate-100 font-bold text-xs border border-jade-700 flex items-center gap-2 transition-all shadow-md">
-                💾 <span>Lưu Vào Nhật Ký Đồng Ruộng</span>
-              </button>
-              <button onclick="window.app.speakText(document.getElementById('resDiseaseVi').textContent + '. ' + document.getElementById('resSymptoms').textContent)" class="px-4 py-2.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 font-bold text-xs border border-emerald-500/40 flex items-center gap-2 transition-all">
-                🔊 <span>Nghe Đọc Kết Quả (Voice TTS)</span>
-              </button>
-            </div>
-
+            </section>
           </div>
-
         </div>
+      </section>
 
+      <section id="voiceTab" class="hidden" aria-labelledby="voiceHeading">
+        <div class="mx-auto max-w-4xl space-y-6">
+          <div class="surface rounded-[var(--radius-card)] p-5 sm:p-8">
+            <div class="flex flex-col gap-5 border-b border-[var(--border)] pb-6 sm:flex-row sm:items-center sm:justify-between">
+              <div><p class="section-label mb-1">Hỏi ngay tại ruộng</p><h2 id="voiceHeading" class="section-title text-2xl sm:text-3xl">Trợ lý nói tiếng Việt</h2><p class="mt-2 text-sm text-[var(--text-secondary)]">Nói câu hỏi ngắn về bệnh, dinh dưỡng hoặc lịch chăm sóc.</p></div>
+              <div class="text-center"><button id="voiceRecordBtn" type="button" class="voice-record" aria-label="Bắt đầu ghi âm">🎙️</button><p id="voiceRecordStatus" class="mono mt-3 text-[11px] text-[var(--text-subtle)]">SẴN SÀNG</p></div>
+            </div>
+            <div class="mt-6"><p class="section-label mb-2">Câu hỏi gợi ý</p><div class="flex flex-wrap gap-2"><button type="button" class="voice-chip secondary-btn px-3 text-sm">Cách trị xì mủ sầu riêng vào mùa mưa?</button><button type="button" class="voice-chip secondary-btn px-3 text-sm">Lúa bị đạo ôn nên làm gì?</button><button type="button" class="voice-chip secondary-btn px-3 text-sm">Khi nào phun thuốc rỉ sắt cà phê?</button></div></div>
+            <div id="voiceChatFeed" class="mt-6 flex min-h-[280px] max-h-[430px] flex-col gap-4 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-4" aria-live="polite"><div class="flex items-start gap-3"><span class="mono grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--primary)] text-xs text-white">AI</span><div class="chat-bubble max-w-[85%] p-3 text-sm text-[var(--text-secondary)]">Chào bà con. Nhấn nút micro để hỏi, hoặc nhập câu hỏi ở ô bên dưới.</div></div></div>
+            <div class="mt-4 flex gap-2"><label class="sr-only" for="voiceQuestionInput">Câu hỏi cho trợ lý</label><input id="voiceQuestionInput" class="control min-w-0 flex-1 px-4 text-sm" type="text" placeholder="Ví dụ: Lá lúa có vết hình thoi thì xử lý thế nào?"><button id="voiceSendBtn" type="button" class="primary-btn shrink-0 px-5 text-sm">Gửi</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="weatherTab" class="hidden" aria-labelledby="weatherHeading">
+        <div class="mx-auto max-w-5xl space-y-6">
+          <div class="surface rounded-[var(--radius-card)] p-5 sm:p-8">
+            <div class="flex flex-col gap-4 border-b border-[var(--border)] pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p class="section-label mb-1">Theo dõi rủi ro</p><h2 id="weatherHeading" class="section-title text-2xl sm:text-3xl">Radar thời tiết nông vụ</h2><p class="mt-2 text-sm text-[var(--text-secondary)]">Độ ẩm và mưa giúp chủ động trước các đợt nấm bệnh.</p></div><div><label class="section-label mb-1 block" for="regionSelect">Khu vực</label><select id="regionSelect" class="control min-w-[220px] px-3 text-sm"></select></div></div>
+            <div id="weatherData" class="mt-6"><div class="grid gap-3 sm:grid-cols-3"><article class="surface-soft rounded-xl p-4"><p class="section-label">Nhiệt độ</p><p id="weatherTemperature" class="mono mt-2 text-3xl font-medium">28°C</p><p class="mt-1 text-sm text-[var(--text-secondary)]">Ấm, phù hợp theo dõi nấm</p></article><article class="surface-soft rounded-xl p-4"><p class="section-label">Độ ẩm</p><p id="weatherHumidity" class="mono mt-2 text-3xl font-medium text-[var(--accent)]">88%</p><p class="mt-1 text-sm text-[var(--text-secondary)]">Cần thăm ruộng thường xuyên</p></article><article class="surface-soft rounded-xl p-4"><p class="section-label">Mưa 24 giờ</p><p id="weatherRain" class="mono mt-2 text-3xl font-medium text-[var(--primary)]">12 mm</p><p class="mt-1 text-sm text-[var(--text-secondary)]">Mưa rào rải rác</p></article></div><div class="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--accent)_30%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_7%,var(--surface))] p-4"><div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-extrabold">Đánh giá nguy cơ</h3><span id="weatherRiskBadge" class="status-pill warning px-3 py-1">Nguy cơ cao</span></div><p id="weatherRiskWarning" class="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">Ẩm độ cao kết hợp nhiệt độ ấm có thể làm nấm bệnh lan nhanh. Ưu tiên thông thoáng tán và kiểm tra mặt dưới lá.</p></div><div class="mt-6"><p class="section-label mb-3">Dự báo 3 ngày</p><div id="weatherForecast" class="grid gap-3 sm:grid-cols-3"></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="logbookTab" class="hidden" aria-labelledby="logbookHeading">
+        <div class="mx-auto max-w-6xl space-y-6">
+          <div class="surface rounded-[var(--radius-card)] p-5 sm:p-8">
+            <div class="flex flex-col gap-4 border-b border-[var(--border)] pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p class="section-label mb-1">Dấu vết canh tác</p><h2 id="logbookHeading" class="section-title text-2xl sm:text-3xl">Nhật ký đồng ruộng</h2><p class="mt-2 text-sm text-[var(--text-secondary)]">Lưu chẩn đoán để theo dõi lại từng luống, từng vụ.</p></div><button id="exportCsvBtn" type="button" class="primary-btn px-4 text-sm">Xuất CSV</button></div>
+            <div class="mt-6 table-wrap"><table id="logbookTable" class="w-full"><thead><tr><th>Ngày</th><th>Cây trồng</th><th>Bệnh hại</th><th>Mức độ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody><tr><td colspan="6" class="py-12 text-center text-sm text-[var(--text-secondary)]">Chưa có ghi chép. Hãy lưu kết quả chẩn đoán đầu tiên.</td></tr></tbody></table></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast pointer-events-none fixed bottom-5 right-5 z-50 translate-y-3 rounded-xl px-4 py-3 text-sm opacity-0 transition-all" role="status" aria-live="polite"></div>
+
+    <div id="apiKeyModal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="apiKeyHeading">
+      <div class="modal-card surface w-full max-w-lg rounded-[var(--radius-card)] p-5 sm:p-7">
+        <div class="flex items-start justify-between gap-4"><div><p class="section-label mb-1">Kết nối tùy chọn</p><h2 id="apiKeyHeading" class="section-title text-xl">Cấu hình Gemini API</h2></div><button id="closeApiKeyBtn" type="button" class="secondary-btn w-11 px-0 text-xl" aria-label="Đóng cửa sổ">×</button></div>
+        <p class="mt-5 text-sm leading-relaxed text-[var(--text-secondary)]">Dùng khóa miễn phí từ Google AI Studio để chẩn đoán ảnh mới. Khóa chỉ được lưu trong trình duyệt này và không cần thiết cho 4 mẫu ngoại tuyến.</p>
+        <label class="section-label mt-5 block" for="apiKeyInput">Gemini API Key</label>
+        <input id="apiKeyInput" class="control mono mt-2 w-full px-4 text-sm" type="password" placeholder="AIzaSy..." autocomplete="off">
+        <div class="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--primary)_25%,var(--border))] bg-[color-mix(in_srgb,var(--primary)_6%,var(--surface))] p-4 text-sm leading-relaxed text-[var(--text-secondary)]"><strong class="text-[var(--text-primary)]">Cách lấy khóa:</strong> mở <a class="font-bold text-[var(--primary)] underline" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>, tạo API key, rồi dán vào ô trên.</div>
+        <div class="mt-6 flex flex-col-reverse gap-2 border-t border-[var(--border)] pt-5 sm:flex-row sm:justify-end"><button id="cancelApiKeyBtn" type="button" class="secondary-btn px-4 text-sm">Hủy</button><button id="saveApiKeyBtn" type="button" class="primary-btn px-5 text-sm">Lưu khóa</button></div>
       </div>
-
-    </div>
-
-    <!-- ================================================================= -->
-    <!-- TAB 2: VIETNAMESE VOICE FIELD ASSISTANT (BÁC SĨ CÂY TRỒNG)         -->
-    <!-- ================================================================= -->
-    <div id="pane_voice" class="hidden max-w-4xl mx-auto space-y-6">
-      <div class="bg-jade-900/90 border border-jade-800 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5">
-
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-2xl border border-emerald-500/20 shadow-inner">
-              🎙️
-            </div>
-            <div>
-              <h2 class="font-extrabold text-lg text-slate-100">Bác Sĩ Cây Trồng Tiếng Việt</h2>
-              <p class="text-xs text-slate-400">Trợ lý AI đàm thoại rảnh tay trực tiếp trên ruộng đồng</p>
-            </div>
-          </div>
-          <span class="text-xs px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono-data font-bold">GEMINI VOICE COPILOT</span>
-        </div>
-
-        <!-- Quick Question Chips -->
-        <div class="space-y-2">
-          <div class="text-xs text-slate-400 font-semibold">Chạm để hỏi nhanh các câu hỏi chuyên sâu:</div>
-          <div class="flex flex-wrap gap-2">
-            <button class="voice-chip text-xs px-3.5 py-2 rounded-xl bg-jade-950 hover:bg-jade-850 text-slate-300 border border-jade-800 hover:border-emerald-500 transition-all font-medium">
-              "Cách trị xì mủ sầu riêng vào mùa mưa?"
-            </button>
-            <button class="voice-chip text-xs px-3.5 py-2 rounded-xl bg-jade-950 hover:bg-jade-850 text-slate-300 border border-jade-800 hover:border-emerald-500 transition-all font-medium">
-              "Lúa bị đạo ôn lá nên phun thuốc gì?"
-            </button>
-            <button class="voice-chip text-xs px-3.5 py-2 rounded-xl bg-jade-950 hover:bg-jade-850 text-slate-300 border border-jade-800 hover:border-emerald-500 transition-all font-medium">
-              "Kỹ thuật trị đốm nâu thanh long?"
-            </button>
-          </div>
-        </div>
-
-        <!-- Chat Stream -->
-        <div id="voiceChatHistory" class="bg-jade-950 rounded-2xl p-4 sm:p-5 border border-jade-800 min-h-[300px] max-h-[420px] overflow-y-auto space-y-4 shadow-inner">
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-xs font-bold text-emerald-400 shrink-0 font-mono-data">AI</div>
-            <div class="bg-jade-900 border border-emerald-900/40 text-slate-200 rounded-2xl rounded-tl-none px-4 py-3.5 max-w-[85%] text-sm shadow-md space-y-1">
-              <p class="leading-relaxed">Chào bà con! Tôi là Bác Sĩ Cây Trồng AgriViet Lens. Bà con có thể nhấn giữ nút Micro để nói hoặc gõ câu hỏi thắc mắc về bệnh hại, hoạt chất và dinh dưỡng cây trồng.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Voice Waveform Indicator -->
-        <div id="voiceWaveform" class="hidden flex items-center justify-center gap-1.5 py-2.5 text-emerald-400 text-xs font-bold font-mono-data">
-          <span class="inline-block w-1.5 h-4 bg-emerald-400 rounded-full animate-bounce"></span>
-          <span class="inline-block w-1.5 h-7 bg-emerald-400 rounded-full animate-bounce delay-75"></span>
-          <span class="inline-block w-1.5 h-9 bg-emerald-400 rounded-full animate-bounce delay-150"></span>
-          <span class="inline-block w-1.5 h-5 bg-emerald-400 rounded-full animate-bounce delay-100"></span>
-          <span class="ml-2">[ĐANG LẮNG NGHE TIẾNG VIỆT...]</span>
-        </div>
-
-        <!-- Input Bar with Mic Button -->
-        <div class="flex items-center gap-3">
-          <button id="micButton" class="w-14 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center text-2xl shadow-xl shadow-emerald-950/80 transition-all shrink-0 border border-emerald-400/20 active:scale-95">
-            🎙️
-          </button>
-          <input
-            type="text"
-            id="voiceInput"
-            placeholder="Hỏi về bệnh cây, hoạt chất, lịch bón phân..."
-            class="flex-1 bg-jade-950 border border-jade-800 focus:border-emerald-500 rounded-2xl px-4 py-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
-          />
-          <button id="btnVoiceSubmit" class="px-5 py-3.5 rounded-2xl bg-jade-850 hover:bg-jade-800 text-emerald-300 font-bold text-sm border border-jade-700 transition-all shrink-0">
-            Gửi
-          </button>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- ================================================================= -->
-    <!-- TAB 3: AGRICULTURAL WEATHER & PEST RISK RADAR                      -->
-    <!-- ================================================================= -->
-    <div id="pane_weather" class="hidden max-w-5xl mx-auto space-y-6">
-      <div id="weatherCard" class="bg-jade-900/90 border border-jade-800 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6">
-
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-jade-800">
-          <div>
-            <h2 class="font-extrabold text-xl text-slate-100 flex items-center gap-2">
-              ⛅ <span>Dự Báo & Radar Cảnh Báo Nguy Cơ Dịch Hại Vi Khí Hậu</span>
-            </h2>
-            <p class="text-xs text-slate-400">Quan trắc độ ẩm, nhiệt độ và tính toán rủi ro bùng phát nấm bệnh thời gian thực</p>
-          </div>
-
-          <!-- Region Selector -->
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-emerald-400 font-semibold">Vùng nông nghiệp:</span>
-            <select id="regionSelect" class="bg-jade-950 border border-jade-700 text-slate-200 text-xs font-bold rounded-xl px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-none cursor-pointer">
-              <!-- Rendered via JS -->
-            </select>
-          </div>
-        </div>
-
-        <!-- Real-Time Metrics Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-
-          <div class="bg-jade-950 p-4.5 rounded-2xl border border-jade-800">
-            <div class="text-[11px] text-slate-400 mb-1 font-semibold">Khu Vực Quan Trắc</div>
-            <div id="weatherLocation" class="font-bold text-sm text-slate-200 truncate">Đồng Bằng Sông Cửu Long</div>
-            <div class="text-[11px] text-emerald-400 mt-1 font-medium font-mono-data">🌾 Lúa gạo & Cây ăn trái</div>
-          </div>
-
-          <div class="bg-jade-950 p-4.5 rounded-2xl border border-jade-800">
-            <div class="text-[11px] text-slate-400 mb-1 font-semibold">Nhiệt Độ Hiện Tại</div>
-            <div id="weatherTemp" class="text-3xl font-black text-amber-400 font-mono-data">28°C</div>
-            <div class="text-[11px] text-slate-500 mt-1">Ấm áp nhiệt đới</div>
-          </div>
-
-          <div class="bg-jade-950 p-4.5 rounded-2xl border border-jade-800">
-            <div class="text-[11px] text-slate-400 mb-1 font-semibold">Độ Ẩm Không Khí</div>
-            <div id="weatherHumidity" class="text-3xl font-black text-cyan-400 font-mono-data">88%</div>
-            <div class="text-[11px] text-rose-400 mt-1 font-bold">⚠️ Độ ẩm cao (dễ sinh nấm)</div>
-          </div>
-
-          <div class="bg-jade-950 p-4.5 rounded-2xl border border-jade-800">
-            <div class="text-[11px] text-slate-400 mb-1 font-semibold">Lượng Mưa 24H</div>
-            <div id="weatherPrecip" class="text-3xl font-black text-indigo-400 font-mono-data">12 mm</div>
-            <div class="text-[11px] text-slate-500 mt-1">Mưa rào rải rác</div>
-          </div>
-
-        </div>
-
-        <!-- Outbreak Risk Warning Banner -->
-        <div class="bg-jade-950/90 p-5 rounded-2xl border border-jade-800 space-y-3 shadow-inner">
-          <div class="flex items-center justify-between">
-            <div class="font-bold text-sm text-slate-200 flex items-center gap-2">
-              🚨 <span>Đánh Giá Nguy Cơ Dịch Hại Từ AI:</span>
-            </div>
-            <span id="weatherRiskBadge" class="px-3.5 py-1 rounded-full text-xs font-bold border bg-rose-500/20 text-rose-300 border-rose-500/40 font-mono-data">
-              Nguy cơ Cao
-            </span>
-          </div>
-          <p id="weatherRiskWarning" class="text-xs text-slate-300 leading-relaxed font-medium">
-            Ẩm độ không khí cao kết hợp nhiệt độ ấm thuận lợi cho nấm Đạo ôn, Xì mủ và Thán thư bùng phát! Khuyến cáo thăm vườn thường xuyên và chủ động phòng ngừa.
-          </p>
-        </div>
-
-        <!-- 3-Day Forecast -->
-        <div class="space-y-3">
-          <div class="font-bold text-xs text-slate-400 uppercase tracking-wider font-mono-data">DỰ BÁO VI KHÍ HẬU & RỦI RO 3 NGÀY TỚI:</div>
-          <div id="weatherForecastDays" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <!-- Rendered via JS -->
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- ================================================================= -->
-    <!-- TAB 4: FARM LOGBOOK (NHẬT KÝ ĐỒNG RUỘNG)                           -->
-    <!-- ================================================================= -->
-    <div id="pane_logbook" class="hidden max-w-6xl mx-auto space-y-6">
-      <div class="bg-jade-900/90 border border-jade-800 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5">
-
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-jade-800">
-          <div>
-            <div class="flex items-center gap-2.5">
-              <h2 class="font-extrabold text-xl text-slate-100">Nhật Ký Đồng Ruộng</h2>
-              <span id="logbookCount" class="text-xs text-emerald-400 font-mono-data font-bold">(0 bản ghi)</span>
-            </div>
-            <p class="text-xs text-slate-400">Lịch sử chẩn đoán bệnh, theo dõi quá trình xử lý và xuất báo cáo VietGAP</p>
-          </div>
-
-          <button id="btnExportCSV" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition-all">
-            📥 <span>Xuất Báo Cáo CSV</span>
-          </button>
-        </div>
-
-        <!-- Log Table -->
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-jade-800 text-[11px] text-slate-400 uppercase font-mono-data font-bold">
-                <th class="py-3 px-3">Thời Gian</th>
-                <th class="py-3 px-3">Cây Trồng</th>
-                <th class="py-3 px-3">Bệnh Hại</th>
-                <th class="py-3 px-3">Mức Độ</th>
-                <th class="py-3 px-3">Trạng Thái Xử Lý</th>
-                <th class="py-3 px-3 text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody id="logbookTableBody">
-              <!-- Rendered via JS -->
-            </tbody>
-          </table>
-        </div>
-
-      </div>
-    </div>
-
-  </main>
-
-  <!-- TOAST NOTIFICATION -->
-  <div id="toast" class="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold opacity-0 translate-y-4 pointer-events-none transition-all transform duration-300"></div>
-
-  <!-- API KEY MODAL -->
-  <div id="apiKeyModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-jade-900 border border-jade-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
-
-      <div class="flex items-center justify-between">
-        <h3 class="font-extrabold text-base text-slate-100 flex items-center gap-2">
-          ⚙️ <span>Cấu Hình Google Gemini API</span>
-        </h3>
-        <button id="btnCloseKeyModal" class="text-slate-400 hover:text-slate-200 text-xl font-bold">&times;</button>
-      </div>
-
-      <div class="space-y-3.5">
-        <p class="text-xs text-slate-300 leading-relaxed">
-          Nhập API Key miễn phí từ <b>Google AI Studio</b> để tận dụng tối đa năng lực nhận diện của mô hình <code>gemini-2.0-flash</code>.
-        </p>
-
-        <div class="space-y-1.5">
-          <label for="geminiApiKeyInput" class="text-xs font-bold text-slate-300 font-mono-data">Gemini API Key:</label>
-          <input
-            type="password"
-            id="geminiApiKeyInput"
-            placeholder="AIzaSy..."
-            class="w-full bg-jade-950 border border-jade-800 focus:border-emerald-500 rounded-xl px-4 py-3 text-xs text-slate-100 placeholder-slate-600 focus:outline-none font-mono-data"
-          />
-        </div>
-
-        <div class="bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-800/40 text-[11px] text-emerald-300 leading-relaxed space-y-1">
-          <div>💡 <b>Lấy API Key Miễn Phí:</b> Tạo tức thì tại <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" class="underline font-bold text-emerald-400">ai.google.dev</a>.</div>
-          <div class="text-slate-400">Nếu để trống, hệ thống sẽ sử dụng <b>Bộ Cơ Sở Dữ Liệu Chuyên Gia Ngoại Tuyến</b> có sẵn.</div>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-end gap-3 pt-3 border-t border-jade-800">
-        <button onclick="document.getElementById('apiKeyModal').classList.add('hidden')" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200">Hủy</button>
-        <button id="btnSaveApiKey" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md">Lưu Cấu Hình</button>
-      </div>
-
     </div>
   </div>
 
-  <!-- FOOTER -->
-  <footer class="bg-jade-950 border-t border-jade-800/80 py-8 mt-12 text-center text-xs text-slate-400">
-    <div class="max-w-7xl mx-auto px-4 space-y-2">
-      <div class="flex items-center justify-center gap-2">
-        <span class="font-extrabold text-slate-300">AgriViet Lens © 2026</span>
-        <span>•</span>
-        <span class="text-emerald-400 font-semibold">Google AI Riser Vietnam 2026</span>
-      </div>
-      <p class="text-slate-500 text-[11px]">Vibe-Coded on Google AI Studio (ai.dev) • Gemini 2.0 Flash • Web Speech • Open-Meteo Agro-Climate</p>
-    </div>
-  </footer>
-
-  <!-- MAIN APP MODULE -->
-  <script type="module" src="./src/app.js"></script>
+  <script type="module" src="src/app.js"></script>
 </body>
 </html>
