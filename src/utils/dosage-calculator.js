@@ -22,7 +22,7 @@ export class DosageCalculator {
       };
     }
 
-    const match = baseInstruction.match(/(\d+(?:[.,]\d+)?)\s*(ml|g|gam|cc|gói|viên)/i);
+    const match = baseInstruction.match(/(\d+(?:[.,]\d+)?)\s*(gam|gói|viên|cc|ml|g)/i);
     if (match) {
       const originalAmount = parseFloat(match[1].replace(',', '.'));
       const unit = match[2].toLowerCase();
