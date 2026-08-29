@@ -14,7 +14,7 @@ To make this easy to run and deploy instantly via Google AI Studio with $0 cost,
 * HTML5 (semantic layout, camera access via MediaDevices / input file)
 * Vanilla JavaScript (ES6+ modular logic, async/await)
 * Tailwind CSS (imported via CDN: https://cdn.tailwindcss.com)
-* Google Fonts (Be Vietnam Pro & Inter for native Vietnamese typography)
+* Google Fonts (Be Vietnam Pro & JetBrains Mono for native Vietnamese typography and data readability)
 * Google Gemini 2.0 / 1.5 Flash API for Multimodal Vision Pathology & Agricultural Q&A
 * Web Speech API (SpeechRecognition & SpeechSynthesis in 'vi-VN') for hands-free voice field consultation
 * Open-Meteo API for real-time agricultural weather and fungal risk scoring
@@ -52,7 +52,7 @@ Core Features & Functionality:
    - API Key modal to enter a custom Gemini API key from ai.google.dev.
 
 The "Vibe" (Design & UX):
-* Aesthetic: Deep agricultural dark mode (slate-950 ground, emerald-500 accents, harvest gold highlights).
+* Aesthetic: Clean field-utility agritech — light canvas (#F8FAF9 ground), emerald (#047857) primary actions, amber (#D97706) advisory highlights, with a user-toggled dark mode. Zero neon. Designed for direct sunlight readability.
 * Interactivity: Instant feedback toasts, animated voice waveforms, smooth tab transitions, and responsive mobile-first grid.
 * Language: Authentic, localized Vietnamese agricultural terminology (bà con, VietGAP, thời gian cách ly PHI, hoạt chất, nấm đối kháng).
 

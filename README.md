@@ -9,6 +9,17 @@
 
 ---
 
+## ⚡ Chạy Ngay (Quick Start)
+
+```bash
+npx serve -l 3000 .
+```
+
+Mở trình duyệt tại **http://localhost:3000** — không cần `npm install`, không cần build.
+
+> **Lưu ý:** Để phân tích ảnh thật bằng AI, nhập Gemini API Key miễn phí tại [ai.google.dev](https://ai.google.dev).
+> Chưa có key? Nhấn các nút preset (🌾 Đạo Ôn, 🌳 Sầu Riêng, ☕ Cà Phê, 🌵 Thanh Long) để xem demo offline đầy đủ.
+
 ## 🌟 Giới Thiệu Dự Án (Project Overview)
 
 **AgriViet Lens** là ứng dụng trợ lý nông nghiệp thông minh đa phương thức (Multimodal AI) được phát triển dành riêng cho nông dân, hợp tác xã và kỹ sư nông nghiệp tại Việt Nam.
@@ -100,6 +111,8 @@ npm run test:e2e
 ---
 
 ## 🚀 Hướng Dẫn Nộp Bài & Triển Khai Lên Google AI Studio (Submission Guide)
+
+> **Chạy Thử Nhanh:** Dùng `npx serve -l 3000 .` để chạy ứng dụng local trước khi triển khai lên Google AI Studio.
 
 Theo đúng hướng dẫn từ **AI Riser Participant Handbook**:
 

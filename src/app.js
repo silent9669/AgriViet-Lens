@@ -7,6 +7,8 @@ import { SAMPLE_PRESETS } from './data/offline-diseases.js';
 import { GeminiService } from './services/gemini-service.js';
 import { WeatherRadarService, VIETNAM_REGIONS } from './services/weather-radar.js';
 import { LogbookService } from './services/logbook-service.js';
+import { ImageProcessor } from './utils/image-processor.js';
+import { DosageCalculator } from './utils/dosage-calculator.js';
 
 function escapeHTML(str) {
   if (!str) return '';
@@ -21,44 +23,30 @@ function escapeHTML(str) {
 class AgriVietApp {
   constructor() {
     this.apiKey = localStorage.getItem('agriviet_gemini_api_key') || '';
+    this.theme = localStorage.getItem('agriviet_theme') || 'light';
     this.selectedCrop = 'rice';
     this.currentImageBase64 = null;
     this.currentDiagnosis = null;
+    this.currentDosageInstruction = '';
     this.isRecording = false;
     this.recognition = null;
     this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
     this.activeTab = 'scanner'; // 'scanner' | 'voice' | 'weather' | 'logbook'
     this.treatmentTab = 'organic'; // 'organic' | 'chemical'
-    this.tankCapacity = 25; // 16L | 25L | 200L
+    this.tankCapacity = 16; // 16L | 25L | 200L
   }
 
   init() {
     console.log('[AgriVietApp] Initializing AgriViet Lens 2026...');
+    this.applyTheme(this.theme);
     this.setupSpeechRecognition();
-    this.renderPresets();
+    this.bindPresets();
     this.bindEvents();
     this.loadWeather();
     this.renderLogbook();
-    this.updateApiKeyStatus();
 
     // Auto load first sample preset for immediate evaluation
     this.loadPreset(SAMPLE_PRESETS[0]);
-  }
-
-  updateApiKeyStatus() {
-    const statusEl = document.getElementById('apiKeyStatus');
-    const badgeEl = document.getElementById('apiKeyBadge');
-    if (!statusEl || !badgeEl) return;
-
-    if (this.apiKey) {
-      statusEl.textContent = 'Gemini 2.0 API: Đã Kích Hoạt';
-      badgeEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow-sm';
-      badgeEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Gemini Cloud Live';
-    } else {
-      statusEl.textContent = 'AI Studio Starter / Cơ Sở Dữ Liệu Sẵn Sàng';
-      badgeEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 flex items-center gap-1.5';
-      badgeEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Dữ Liệu Chuyên Gia Sẵn Sàng';
-    }
   }
 
   saveApiKey(key) {
@@ -70,7 +58,6 @@ class AgriVietApp {
       localStorage.removeItem('agriviet_gemini_api_key');
       this.showToast('Đã kích hoạt Bộ Cơ Sở Dữ Liệu Ngoại Tuyến!', 'info');
     }
-    this.updateApiKeyStatus();
   }
 
   setupSpeechRecognition() {
@@ -88,8 +75,8 @@ class AgriVietApp {
 
       this.recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        const voiceInput = document.getElementById('voiceInput');
-        if (voiceInput) voiceInput.value = transcript;
+        const voiceQuestionInput = document.getElementById('voiceQuestionInput');
+        if (voiceQuestionInput) voiceQuestionInput.value = transcript;
         this.submitVoiceQuery(transcript);
       };
 
@@ -125,7 +112,7 @@ class AgriVietApp {
   }
 
   updateMicUI(recording) {
-    const btn = document.getElementById('micButton');
+    const btn = document.getElementById('voiceRecordBtn');
     const wave = document.getElementById('voiceWaveform');
     if (!btn) return;
 
@@ -157,32 +144,14 @@ class AgriVietApp {
     this.synth.speak(utterance);
   }
 
-  renderPresets() {
-    const container = document.getElementById('presetContainer');
-    if (!container) return;
-
-    container.innerHTML = SAMPLE_PRESETS.map((preset) => `
-      <button
-        data-preset-id="${preset.id}"
-        class="preset-card group p-3 rounded-xl border border-emerald-900/40 bg-emerald-950/20 hover:bg-emerald-900/40 hover:border-emerald-500/80 transition-all text-left flex items-center gap-3.5 w-full"
-      >
-        <div class="relative w-14 h-12 rounded-lg overflow-hidden border border-emerald-800/60 shrink-0 shadow-inner">
-          <img src="${preset.sampleImageBase64}" alt="${preset.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="font-bold text-sm text-slate-100 group-hover:text-emerald-300 transition-colors truncate">${preset.name}</div>
-          <div class="text-xs text-slate-400 truncate mt-0.5">${preset.description}</div>
-        </div>
-        <span class="text-emerald-400 text-xs font-bold px-2.5 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/30 group-hover:bg-emerald-500/25 group-hover:border-emerald-400 transition-all shrink-0">
-          Khám Phá
-        </span>
-      </button>
-    `).join('');
-
-    container.querySelectorAll('.preset-card').forEach(btn => {
+  bindPresets() {
+    document.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-preset-id');
-        const preset = SAMPLE_PRESETS.find(p => p.id === id);
+        const presetKey = btn.getAttribute('data-preset');
+        const preset = SAMPLE_PRESETS.find(p => {
+          const cropKey = p.crop || p.cropKey || '';
+          return cropKey.toLowerCase().includes((presetKey || '').toLowerCase()) || p.id === presetKey;
+        });
         if (preset) this.loadPreset(preset);
       });
     });
@@ -193,18 +162,21 @@ class AgriVietApp {
     this.currentImageBase64 = preset.sampleImageBase64;
 
     const preview = document.getElementById('imagePreview');
-    const placeholder = document.getElementById('uploadPlaceholder');
-    const scanHud = document.getElementById('scannerHudOverlay');
+    const prompt = document.getElementById('uploadPrompt');
+    const container = document.getElementById('previewContainer');
 
-    if (preview && placeholder) {
+    if (preview && prompt && container) {
       preview.src = preset.sampleImageBase64;
       preview.classList.remove('hidden');
-      placeholder.classList.add('hidden');
-      if (scanHud) scanHud.classList.remove('hidden');
+      prompt.classList.add('hidden');
+      container.classList.remove('hidden');
     }
 
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    if (analyzeBtn) analyzeBtn.disabled = false;
+
     // Sync crop selector
-    const cropSelect = document.getElementById('cropSelector');
+    const cropSelect = document.getElementById('cropSelect');
     if (cropSelect) cropSelect.value = preset.cropKey;
 
     this.runDiagnosis();
@@ -216,14 +188,12 @@ class AgriVietApp {
       return;
     }
 
-    const scanBtn = document.getElementById('btnRunScan');
-    const loadingState = document.getElementById('diagnosisLoading');
-    const resultCard = document.getElementById('diagnosisResultCard');
-    const scanBeam = document.getElementById('scanLaserBeam');
+    const scanBtn = document.getElementById('analyzeBtn');
+    const loadingState = document.getElementById('loadingSpinner');
+    const resultCard = document.getElementById('resultsSection');
 
     if (scanBtn) scanBtn.disabled = true;
     if (loadingState) loadingState.classList.remove('hidden');
-    if (scanBeam) scanBeam.classList.remove('hidden');
     if (resultCard) resultCard.classList.add('opacity-30', 'pointer-events-none');
 
     try {
@@ -235,7 +205,6 @@ class AgriVietApp {
 
       this.currentDiagnosis = diagnosis;
       this.renderDiagnosis(diagnosis);
-      this.calculateDosage();
       this.showToast('Đã hoàn tất phân tích bệnh lý thực vật!', 'success');
     } catch (e) {
       console.error('[Diagnosis] Error:', e);
@@ -243,13 +212,12 @@ class AgriVietApp {
     } finally {
       if (scanBtn) scanBtn.disabled = false;
       if (loadingState) loadingState.classList.add('hidden');
-      if (scanBeam) scanBeam.classList.add('hidden');
       if (resultCard) resultCard.classList.remove('opacity-30', 'pointer-events-none');
     }
   }
 
   renderDiagnosis(data) {
-    const card = document.getElementById('diagnosisResultCard');
+    const card = document.getElementById('resultsSection');
     if (!card) return;
 
     let severityBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Mức Độ: Nhẹ</span>';
@@ -259,19 +227,19 @@ class AgriVietApp {
       severityBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Mức Độ: Cảnh Báo</span>';
     }
 
-    document.getElementById('resCropName').textContent = data.cropName;
-    document.getElementById('resDiseaseVi').textContent = data.diseaseNameVi;
-    document.getElementById('resDiseaseScientific').textContent = data.diseaseNameScientific;
-    document.getElementById('resConfidence').textContent = `${data.confidenceScore}%`;
-    document.getElementById('resConfidenceBar').style.width = `${data.confidenceScore}%`;
-    document.getElementById('resSeverityContainer').innerHTML = severityBadge;
-    document.getElementById('resSymptoms').textContent = data.symptomsSummary;
-    document.getElementById('resCauses').textContent = data.primaryCauses;
+    document.getElementById('cropName').textContent = data.cropName;
+    document.getElementById('diseaseName').textContent = data.diseaseNameVi;
+    document.getElementById('diseaseNameSci').textContent = data.diseaseNameScientific;
+    document.getElementById('confidenceScore').textContent = `${data.confidenceScore}%`;
+    document.getElementById('confidenceMeter').style.width = `${data.confidenceScore}%`;
+    document.getElementById('severityBadge').innerHTML = severityBadge;
+    document.getElementById('symptomsSummary').textContent = data.symptomsSummary;
+    document.getElementById('primaryCauses').textContent = data.primaryCauses;
 
     // Organic Tab
     const organic = data.organicTreatment || {};
     document.getElementById('organicSteps').innerHTML = (organic.steps || []).map((s, i) => `
-      <li class="flex items-start gap-3 text-sm text-slate-200">
+      <li class="flex items-start gap-3 text-sm text-slate-700">
         <span class="flex-shrink-0 w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs flex items-center justify-center font-mono font-bold">${i + 1}</span>
         <span class="leading-relaxed">${escapeHTML(s)}</span>
       </li>
@@ -280,14 +248,14 @@ class AgriVietApp {
 
     // Chemical Tab
     const chem = data.chemicalTreatment || {};
-    document.getElementById('chemActive').textContent = chem.activeIngredients || 'Hoạt chất đặc trị';
-    document.getElementById('chemDosage').textContent = chem.dosageInstructions || 'Pha theo hướng dẫn';
-    document.getElementById('chemQuarantine').textContent = `${chem.quarantineDays || 14} Ngày`;
-    document.getElementById('chemSafety').textContent = chem.safetyNotes || 'Bảo hộ lao động đầy đủ.';
+    this.currentDosageInstruction = chem.dosageInstructions || '';
+    document.getElementById('activeIngredients').textContent = chem.activeIngredients || 'Hoạt chất đặc trị';
+    document.getElementById('dosageInstructions').textContent = chem.dosageInstructions || 'Pha theo hướng dẫn';
+    document.getElementById('quarantineDays').textContent = `${chem.quarantineDays || 14} Ngày`;
 
     // Prevention List
-    document.getElementById('resPreventionList').innerHTML = (data.seasonalPrevention || []).map(p => `
-      <li class="flex items-start gap-2.5 text-xs text-slate-300">
+    document.getElementById('seasonalPrevention').innerHTML = (data.seasonalPrevention || []).map(p => `
+      <li class="flex items-start gap-2.5 text-xs text-slate-600">
         <span class="text-emerald-400 font-bold shrink-0">✓</span>
         <span class="leading-relaxed">${escapeHTML(p)}</span>
       </li>
@@ -295,67 +263,56 @@ class AgriVietApp {
 
     card.classList.remove('hidden');
     this.switchTreatmentTab(this.treatmentTab);
+    this.renderTankDosage();
   }
 
   switchTreatmentTab(tab) {
     this.treatmentTab = tab;
-    const tabOrgBtn = document.getElementById('tabOrgBtn');
-    const tabChemBtn = document.getElementById('tabChemBtn');
-    const paneOrg = document.getElementById('paneOrganic');
-    const paneChem = document.getElementById('paneChemical');
+    const organicTab = document.getElementById('organicTab');
+    const chemicalTab = document.getElementById('chemicalTab');
+    const paneOrg = document.getElementById('organicPanel');
+    const paneChem = document.getElementById('chemicalPanel');
 
-    if (!tabOrgBtn || !tabChemBtn) return;
+    if (!organicTab || !chemicalTab) return;
 
-    if (tab === 'organic') {
-      tabOrgBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 text-white shadow-md flex items-center gap-1.5 transition-all';
-      tabChemBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg bg-slate-900/60 text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-all';
-      paneOrg.classList.remove('hidden');
-      paneChem.classList.add('hidden');
-    } else {
-      tabChemBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-amber-600 text-white shadow-md flex items-center gap-1.5 transition-all';
-      tabOrgBtn.className = 'px-4 py-2 text-xs font-semibold rounded-lg bg-slate-900/60 text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-all';
-      paneChem.classList.remove('hidden');
-      paneOrg.classList.add('hidden');
-    }
+    const organicActive = tab === 'organic';
+    organicTab.className = organicActive ? 'treatment-tab active px-3' : 'treatment-tab px-3';
+    chemicalTab.className = organicActive ? 'treatment-tab px-3' : 'treatment-tab active px-3';
+    organicTab.setAttribute('aria-selected', String(organicActive));
+    chemicalTab.setAttribute('aria-selected', String(!organicActive));
+    paneOrg.classList.toggle('hidden', !organicActive);
+    paneChem.classList.toggle('hidden', organicActive);
+    paneOrg.setAttribute('aria-hidden', String(!organicActive));
+    paneChem.setAttribute('aria-hidden', String(organicActive));
   }
 
   setTankCapacity(liters) {
     this.tankCapacity = liters;
     document.querySelectorAll('.tank-btn').forEach(btn => {
-      const cap = Number(btn.getAttribute('data-capacity'));
-      if (cap === liters) {
-        btn.className = 'tank-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-md border border-emerald-500 transition-all';
-      } else {
-        btn.className = 'tank-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 transition-all';
-      }
+      btn.classList.toggle('active', Number(btn.getAttribute('data-capacity')) === liters);
     });
-    this.calculateDosage();
+    this.renderTankDosage();
   }
 
-  calculateDosage() {
-    const calcDoseAmount = document.getElementById('calcDoseAmount');
-    const calcWaterAmount = document.getElementById('calcWaterAmount');
-    const calcCoverageArea = document.getElementById('calcCoverageArea');
-    if (!calcDoseAmount) return;
+  renderTankDosage() {
+    const el = document.getElementById('tankDosageResult');
+    if (!el) return;
 
-    let dosePerL = 1.0; // 1g or 1ml per Liter
-    if (this.selectedCrop === 'durian') dosePerL = 2.5;
-    if (this.selectedCrop === 'dragonfruit') dosePerL = 1.4;
-    if (this.selectedCrop === 'coffee') dosePerL = 1.2;
+    const instruction = this.currentDosageInstruction || this.currentDiagnosis?.chemicalTreatment?.dosageInstructions || '';
+    if (!instruction) {
+      el.textContent = 'Chọn dung tích bình để xem liều pha.';
+      return;
+    }
 
-    const totalDose = Math.round(dosePerL * this.tankCapacity);
-    const coverageM2 = Math.round(this.tankCapacity * 20); // 20m2 per Liter on average
-
-    calcDoseAmount.textContent = `${totalDose} g (hoặc ml)`;
-    calcWaterAmount.textContent = `${this.tankCapacity} Lít Nước`;
-    calcCoverageArea.textContent = `~ ${coverageM2} m² tán lá`;
+    const result = DosageCalculator.calculateTankDosage(instruction, this.tankCapacity);
+    el.textContent = result.calculatedDosageText;
   }
 
   async submitVoiceQuery(question) {
     if (!question || !question.trim()) return;
 
-    const chatContainer = document.getElementById('voiceChatHistory');
-    const input = document.getElementById('voiceInput');
+    const chatContainer = document.getElementById('voiceChatFeed');
+    const input = document.getElementById('voiceQuestionInput');
     if (input) input.value = '';
 
     if (chatContainer) {
@@ -381,7 +338,7 @@ class AgriVietApp {
       chatContainer.innerHTML += `
         <div class="flex items-start gap-3 justify-start">
           <div class="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-xs font-bold text-emerald-400 shrink-0">AI</div>
-          <div class="bg-slate-900 border border-emerald-900/40 text-slate-200 rounded-2xl rounded-tl-none px-4 py-3.5 max-w-[85%] text-sm shadow-md space-y-2">
+          <div class="bg-white border border-emerald-900/40 text-slate-700 rounded-2xl rounded-tl-none px-4 py-3.5 max-w-[85%] text-sm shadow-md space-y-2">
             <p class="leading-relaxed">${escapeHTML(answer)}</p>
             <button class="btn-read-aloud text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 mt-2 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/40">
               🔊 Nghe phát âm
@@ -400,15 +357,14 @@ class AgriVietApp {
   }
 
   async loadWeather(lat = 10.0452, lon = 105.7469) {
-    const container = document.getElementById('weatherCard');
+    const container = document.getElementById('weatherData');
     if (!container) return;
 
     try {
       const data = await WeatherRadarService.getAgriculturalRisk(lat, lon);
-      document.getElementById('weatherLocation').textContent = data.locationName;
-      document.getElementById('weatherTemp').textContent = `${data.temperature}°C`;
+      document.getElementById('weatherTemperature').textContent = `${data.temperature}°C`;
       document.getElementById('weatherHumidity').textContent = `${data.humidity}%`;
-      document.getElementById('weatherPrecip').textContent = `${data.precipitation} mm`;
+      document.getElementById('weatherRain').textContent = `${data.precipitation} mm`;
 
       const risk = data.riskEvaluation;
       const riskBadge = document.getElementById('weatherRiskBadge');
@@ -420,13 +376,13 @@ class AgriVietApp {
       }
       if (riskDesc) riskDesc.textContent = risk.warningText;
 
-      const forecastEl = document.getElementById('weatherForecastDays');
+      const forecastEl = document.getElementById('weatherForecast');
       if (forecastEl && data.forecast3Days) {
         forecastEl.innerHTML = data.forecast3Days.map(f => `
-          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 text-center space-y-1">
-            <div class="text-xs text-slate-400 font-medium">${f.date}</div>
-            <div class="text-sm font-bold text-slate-100 my-0.5">${f.tempMin}° - ${f.tempMax}°C</div>
-            <div class="text-xs text-cyan-400 font-medium">🌧️ Mưa: ${f.rainProb}%</div>
+          <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-center space-y-1">
+            <div class="text-xs text-slate-500 font-medium">${f.date}</div>
+            <div class="text-sm font-bold text-slate-700 my-0.5">${f.tempMin}° - ${f.tempMax}°C</div>
+            <div class="text-xs text-cyan-700 font-medium">🌧️ Mưa: ${f.rainProb}%</div>
           </div>
         `).join('');
       }
@@ -444,7 +400,7 @@ class AgriVietApp {
     const entry = LogbookService.addLog({
       ...this.currentDiagnosis,
       thumbnail: this.currentImageBase64,
-      location: document.getElementById('weatherLocation')?.textContent || 'Vườn nhà'
+      location: 'Vườn nhà'
     });
 
     this.renderLogbook();
@@ -452,12 +408,10 @@ class AgriVietApp {
   }
 
   renderLogbook() {
-    const tableBody = document.getElementById('logbookTableBody');
-    const countEl = document.getElementById('logbookCount');
+    const tableBody = document.querySelector('#logbookTable tbody');
     if (!tableBody) return;
 
     const logs = LogbookService.getLogs();
-    if (countEl) countEl.textContent = `(${logs.length} bản ghi)`;
 
     if (logs.length === 0) {
       tableBody.innerHTML = `
@@ -472,8 +426,8 @@ class AgriVietApp {
 
     tableBody.innerHTML = logs.map(l => `
       <tr class="border-b border-slate-800/60 hover:bg-emerald-950/10 text-sm transition-colors">
-        <td class="py-3.5 px-3 text-slate-400 text-xs font-mono">${new Date(l.createdAt).toLocaleDateString('vi-VN')}</td>
-        <td class="py-3.5 px-3 font-bold text-slate-200">${escapeHTML(l.cropName)}</td>
+        <td class="py-3.5 px-3 text-slate-500 text-xs font-mono">${new Date(l.createdAt).toLocaleDateString('vi-VN')}</td>
+        <td class="py-3.5 px-3 font-bold text-slate-700">${escapeHTML(l.cropName)}</td>
         <td class="py-3.5 px-3 font-semibold text-emerald-400">${escapeHTML(l.diseaseNameVi)}</td>
         <td class="py-3.5 px-3">
           <span class="px-2.5 py-1 rounded-md text-xs font-medium ${l.severityLevel === 'Nghiêm trọng' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
@@ -481,7 +435,7 @@ class AgriVietApp {
           </span>
         </td>
         <td class="py-3.5 px-3">
-          <select data-log-id="${escapeHTML(l.id)}" class="status-select bg-slate-950 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-200 focus:ring-1 focus:ring-emerald-500">
+          <select data-log-id="${escapeHTML(l.id)}" class="status-select bg-white border border-slate-300 text-xs rounded-lg px-2.5 py-1.5 text-slate-700 focus:ring-1 focus:ring-emerald-500">
             <option value="Đang theo dõi" ${l.status === 'Đang theo dõi' ? 'selected' : ''}>Đang theo dõi</option>
             <option value="Đã xử lý" ${l.status === 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
             <option value="Đã khỏi bệnh" ${l.status === 'Đã khỏi bệnh' ? 'selected' : ''}>Đã khỏi bệnh</option>
@@ -532,7 +486,7 @@ class AgriVietApp {
       success: 'bg-emerald-600 text-white shadow-emerald-900/50',
       error: 'bg-rose-600 text-white shadow-rose-900/50',
       warning: 'bg-amber-600 text-white shadow-amber-900/50',
-      info: 'bg-slate-900 text-slate-100 border border-slate-700 shadow-slate-900/50'
+      info: 'bg-white text-slate-700 border border-slate-200 shadow-slate-900/50'
     };
 
     toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 transition-all transform duration-300 ${colors[type] || colors.info}`;
@@ -544,18 +498,36 @@ class AgriVietApp {
     }, 3500);
   }
 
+  applyTheme(theme) {
+    this.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('agriviet_theme', theme);
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☽' : '☼';
+      btn.setAttribute('aria-pressed', String(theme === 'dark'));
+    }
+  }
+
+  toggleTheme() {
+    this.applyTheme(this.theme === 'dark' ? 'light' : 'dark');
+  }
+
   bindEvents() {
     // Navigation Tabs
-    document.querySelectorAll('.nav-tab').forEach(tab => {
+    document.querySelectorAll('[data-tab]').forEach(tab => {
       tab.addEventListener('click', () => {
         const target = tab.getAttribute('data-tab');
         this.switchNavTab(target);
       });
     });
 
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) themeBtn.addEventListener('click', () => this.toggleTheme());
+
     // Treatment Mode Tabs
-    const tabOrg = document.getElementById('tabOrgBtn');
-    const tabChem = document.getElementById('tabChemBtn');
+    const tabOrg = document.getElementById('organicTab');
+    const tabChem = document.getElementById('chemicalTab');
     if (tabOrg) tabOrg.addEventListener('click', () => this.switchTreatmentTab('organic'));
     if (tabChem) tabChem.addEventListener('click', () => this.switchTreatmentTab('chemical'));
 
@@ -568,21 +540,21 @@ class AgriVietApp {
     });
 
     // Crop Selector
-    const cropSel = document.getElementById('cropSelector');
+    const cropSel = document.getElementById('cropSelect');
     if (cropSel) {
       cropSel.addEventListener('change', (e) => {
         this.selectedCrop = e.target.value;
-        this.calculateDosage();
+        this.renderTankDosage();
       });
     }
 
     // Run Scan Button
-    const btnScan = document.getElementById('btnRunScan');
+    const btnScan = document.getElementById('analyzeBtn');
     if (btnScan) btnScan.addEventListener('click', () => this.runDiagnosis());
 
     // File Upload / Drop
-    const fileInput = document.getElementById('leafFileInput');
-    const dropZone = document.getElementById('uploadDropZone');
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('dropzone');
 
     if (fileInput) {
       fileInput.addEventListener('change', (e) => {
@@ -594,30 +566,58 @@ class AgriVietApp {
     if (dropZone) {
       dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
-        dropZone.classList.add('border-emerald-500', 'bg-emerald-950/40');
+        dropZone.classList.add('drag-active');
       });
       dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('border-emerald-500', 'bg-emerald-950/40');
+        dropZone.classList.remove('drag-active');
       });
       dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        dropZone.classList.remove('border-emerald-500', 'bg-emerald-950/40');
+        dropZone.classList.remove('drag-active');
         if (e.dataTransfer.files.length) {
           this.handleFileSelected(e.dataTransfer.files[0]);
         }
       });
     }
 
+    const cameraInput = document.getElementById('cameraInput');
+    const cameraTrigger = document.getElementById('cameraTrigger');
+    const uploadTrigger = document.getElementById('uploadTrigger');
+
+    if (cameraInput) {
+      cameraInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) this.handleFileSelected(e.target.files[0]);
+      });
+    }
+    if (cameraTrigger && cameraInput) {
+      cameraTrigger.addEventListener('click', () => cameraInput.click());
+    }
+    if (uploadTrigger) {
+      uploadTrigger.addEventListener('click', () => fileInput?.click());
+    }
+
+    window.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) this.handleFileSelected(file);
+          break;
+        }
+      }
+    });
+
     // Voice Mic & Submit
-    const micBtn = document.getElementById('micButton');
+    const micBtn = document.getElementById('voiceRecordBtn');
     if (micBtn) micBtn.addEventListener('click', () => this.toggleRecording());
 
-    const voiceSubmit = document.getElementById('btnVoiceSubmit');
-    const voiceInput = document.getElementById('voiceInput');
-    if (voiceSubmit && voiceInput) {
-      voiceSubmit.addEventListener('click', () => this.submitVoiceQuery(voiceInput.value));
-      voiceInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') this.submitVoiceQuery(voiceInput.value);
+    const voiceSubmit = document.getElementById('voiceSendBtn');
+    const voiceQuestionInput = document.getElementById('voiceQuestionInput');
+    if (voiceSubmit && voiceQuestionInput) {
+      voiceSubmit.addEventListener('click', () => this.submitVoiceQuery(voiceQuestionInput.value));
+      voiceQuestionInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') this.submitVoiceQuery(voiceQuestionInput.value);
       });
     }
 
@@ -625,18 +625,18 @@ class AgriVietApp {
     document.querySelectorAll('.voice-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const text = chip.textContent.trim().replace(/^"|"$/g, '');
-        if (voiceInput) voiceInput.value = text;
+        if (voiceQuestionInput) voiceQuestionInput.value = text;
         this.submitVoiceQuery(text);
       });
     });
 
     // Save to Logbook
-    const btnSaveLog = document.getElementById('btnSaveLogbook');
+    const btnSaveLog = document.getElementById('saveToLogbookBtn');
     if (btnSaveLog) btnSaveLog.addEventListener('click', () => this.saveCurrentToLogbook());
 
     // Export CSV
-    const btnExportCSV = document.getElementById('btnExportCSV');
-    if (btnExportCSV) btnExportCSV.addEventListener('click', () => this.exportCSV());
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    if (exportCsvBtn) exportCsvBtn.addEventListener('click', () => this.exportCSV());
 
     // Region Select for Weather
     const regionSelect = document.getElementById('regionSelect');
@@ -651,11 +651,12 @@ class AgriVietApp {
     }
 
     // API Key Modal
-    const btnOpenKeyModal = document.getElementById('btnApiKeyModal');
+    const btnOpenKeyModal = document.getElementById('apiKeyBtn');
     const modal = document.getElementById('apiKeyModal');
-    const btnCloseModal = document.getElementById('btnCloseKeyModal');
-    const btnSaveKey = document.getElementById('btnSaveApiKey');
-    const apiKeyInput = document.getElementById('geminiApiKeyInput');
+    const btnCloseModal = document.getElementById('closeApiKeyBtn');
+    const btnCancelModal = document.getElementById('cancelApiKeyBtn');
+    const btnSaveKey = document.getElementById('saveApiKeyBtn');
+    const apiKeyInput = document.getElementById('apiKeyInput');
 
     if (btnOpenKeyModal && modal) {
       btnOpenKeyModal.onclick = () => {
@@ -666,6 +667,9 @@ class AgriVietApp {
     if (btnCloseModal && modal) {
       btnCloseModal.onclick = () => modal.classList.add('hidden');
     }
+    if (btnCancelModal && modal) {
+      btnCancelModal.onclick = () => modal.classList.add('hidden');
+    }
     if (btnSaveKey && apiKeyInput && modal) {
       btnSaveKey.onclick = () => {
         this.saveApiKey(apiKeyInput.value);
@@ -674,49 +678,50 @@ class AgriVietApp {
     }
   }
 
-  handleFileSelected(file) {
+  async handleFileSelected(file) {
     if (!file.type.startsWith('image/')) {
-      this.showToast('Vui lòng chọn một file hình ảnh (JPG, PNG, WebP)!', 'warning');
+      this.showToast('Vui lòng chọn file hình ảnh (JPG, PNG, WebP)!', 'warning');
       return;
     }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        this.currentImageBase64 = GeminiService.resizeImageToMax(img, 800);
-        const preview = document.getElementById('imagePreview');
-        const placeholder = document.getElementById('uploadPlaceholder');
-        const scanHud = document.getElementById('scannerHudOverlay');
-        if (preview && placeholder) {
-          preview.src = this.currentImageBase64;
-          preview.classList.remove('hidden');
-          placeholder.classList.add('hidden');
-          if (scanHud) scanHud.classList.remove('hidden');
-        }
-        this.showToast('Đã tải ảnh lá lên. Nhấn "Phân Tích Bệnh" để chẩn đoán.', 'info');
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    try {
+      const { base64 } = await ImageProcessor.optimizeImage(file);
+      this.currentImageBase64 = base64;
+      const preview = document.getElementById('imagePreview');
+      const prompt = document.getElementById('uploadPrompt');
+      const container = document.getElementById('previewContainer');
+      if (preview && prompt && container) {
+        preview.src = base64;
+        preview.classList.remove('hidden');
+        prompt.classList.add('hidden');
+        container.classList.remove('hidden');
+      }
+      const btn = document.getElementById('analyzeBtn');
+      if (btn) btn.disabled = false;
+      this.showToast('Ảnh đã sẵn sàng. Nhấn "Chẩn Đoán Ngay".', 'info');
+    } catch (err) {
+      this.showToast('Không đọc được ảnh. Thử lại.', 'warning');
+    }
   }
 
   switchNavTab(tabName) {
     this.activeTab = tabName;
-    document.querySelectorAll('.nav-tab').forEach(t => {
-      if (t.getAttribute('data-tab') === tabName) {
-        t.className = 'nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-2 shadow-sm transition-all';
-      } else {
-        t.className = 'nav-tab px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 flex items-center gap-2 transition-all';
-      }
+    document.querySelectorAll('[data-tab]').forEach(t => {
+      const isActive = t.getAttribute('data-tab') === tabName;
+      t.setAttribute('aria-selected', String(isActive));
+      t.className = isActive
+        ? 'tab-button active px-3 text-sm sm:px-5'
+        : 'tab-button px-3 text-sm sm:px-5';
     });
 
-    ['scanner', 'voice', 'weather', 'logbook'].forEach(pane => {
-      const el = document.getElementById(`pane_${pane}`);
-      if (el) {
-        if (pane === tabName) el.classList.remove('hidden');
-        else el.classList.add('hidden');
-      }
+    const panelMap = {
+      scanner: 'tab-scanner',
+      voice: 'voiceTab',
+      weather: 'weatherTab',
+      logbook: 'logbookTab'
+    };
+    Object.entries(panelMap).forEach(([name, id]) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden', name !== tabName);
     });
   }
 }

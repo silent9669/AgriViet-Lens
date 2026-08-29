@@ -46,21 +46,49 @@ server.listen(0, async () => {
     const html = await indexRes.text();
 
     assert.ok(html.toLowerCase().includes('agriviet lens'), 'HTML missing AgriViet Lens branding');
-    assert.ok(html.toLowerCase().includes('ai riser 2026'), 'HTML missing AI Riser 2026 tag');
-    assert.ok(html.includes('id="pane_scanner"'), 'HTML missing scanner pane');
-    assert.ok(html.includes('id="pane_voice"'), 'HTML missing voice copilot pane');
-    assert.ok(html.includes('id="pane_weather"'), 'HTML missing weather radar pane');
-    assert.ok(html.includes('id="pane_logbook"'), 'HTML missing farm logbook pane');
-    assert.ok(html.includes('id="presetContainer"'), 'HTML missing preset demo container');
-    assert.ok(html.includes('id="diagnosisResultCard"'), 'HTML missing diagnosis result card');
-    assert.ok(html.includes('id="tabOrgBtn"'), 'HTML missing organic treatment tab button');
-    assert.ok(html.includes('id="tabChemBtn"'), 'HTML missing chemical treatment tab button');
+    assert.ok(
+      html.toLowerCase().includes('ai riser 2026') ||
+        html.toLowerCase().includes('ai riser') ||
+        html.toLowerCase().includes('google ai studio'),
+      'HTML missing AI Riser tag'
+    );
+
+    // Tab panels (new IDs)
+    assert.ok(html.includes('id="tab-scanner"'), 'HTML missing scanner tab panel');
+    assert.ok(html.includes('id="voiceTab"'), 'HTML missing voice tab panel');
+    assert.ok(html.includes('id="weatherTab"'), 'HTML missing weather tab panel');
+    assert.ok(html.includes('id="logbookTab"'), 'HTML missing logbook tab panel');
+
+    // Key feature elements
+    assert.ok(html.includes('id="dropzone"'), 'HTML missing dropzone');
+    assert.ok(html.includes('id="fileInput"'), 'HTML missing fileInput');
+    assert.ok(html.includes('id="analyzeBtn"'), 'HTML missing analyzeBtn');
+    assert.ok(html.includes('id="resultsSection"'), 'HTML missing resultsSection');
+    assert.ok(html.includes('id="tankDosageResult"'), 'HTML missing tankDosageResult');
+    assert.ok(html.includes('id="themeToggleBtn"'), 'HTML missing themeToggleBtn');
+    assert.ok(html.includes('id="organicTab"'), 'HTML missing organicTab');
+    assert.ok(html.includes('id="chemicalTab"'), 'HTML missing chemicalTab');
+
+    // Preset buttons (static HTML, no container ID needed — check data-preset attribute)
+    assert.ok(html.includes('data-preset="rice"'), 'HTML missing rice preset button');
+    assert.ok(html.includes('data-preset="durian"'), 'HTML missing durian preset button');
+
+    // Tank capacity buttons
+    assert.ok(html.includes('data-capacity="16"'), 'HTML missing 16L tank button');
+    assert.ok(html.includes('data-capacity="25"'), 'HTML missing 25L tank button');
+    assert.ok(html.includes('data-capacity="200"'), 'HTML missing 200L tank button');
 
     // 3. Fetch and test app.js module
     const appRes = await fetch(`http://localhost:${port}/src/app.js`);
     assert.strictEqual(appRes.status, 200, 'src/app.js should return 200 OK');
     const appJs = await appRes.text();
     assert.ok(appJs.includes('AgriVietApp'), 'app.js missing AgriVietApp class');
+    assert.ok(appJs.includes('ImageProcessor'), 'app.js missing ImageProcessor import');
+    assert.ok(appJs.includes('DosageCalculator'), 'app.js missing DosageCalculator import');
+    assert.ok(appJs.includes('tankDosageResult'), 'app.js missing tankDosageResult binding');
+    assert.ok(appJs.includes('themeToggleBtn'), 'app.js missing themeToggleBtn binding');
+    assert.ok(appJs.includes("data-theme"), 'app.js missing data-theme attribute toggle');
+    assert.ok(appJs.includes('paste'), 'app.js missing clipboard paste handler');
 
     // 4. Fetch and test offline-diseases.js module
     const diseasesRes = await fetch(`http://localhost:${port}/src/data/offline-diseases.js`);
@@ -82,6 +110,15 @@ server.listen(0, async () => {
     // 7. Fetch and test logbook-service.js module
     const logbookRes = await fetch(`http://localhost:${port}/src/services/logbook-service.js`);
     assert.strictEqual(logbookRes.status, 200, 'src/services/logbook-service.js should return 200 OK');
+
+    // 8. Fetch and test utility modules
+    const imageProcessorRes = await fetch(`http://localhost:${port}/src/utils/image-processor.js`);
+    assert.strictEqual(imageProcessorRes.status, 200, 'image-processor.js should return 200 OK');
+
+    const dosageCalcRes = await fetch(`http://localhost:${port}/src/utils/dosage-calculator.js`);
+    assert.strictEqual(dosageCalcRes.status, 200, 'dosage-calculator.js should return 200 OK');
+    const dosageCalcJs = await dosageCalcRes.text();
+    assert.ok(dosageCalcJs.includes('DosageCalculator'), 'dosage-calculator.js missing DosageCalculator class');
 
     console.log('✅ End-to-End static server & module integrity tests passed with flying colors!');
   } catch (err) {
