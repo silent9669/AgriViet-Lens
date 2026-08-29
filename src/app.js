@@ -379,10 +379,10 @@ class AgriVietApp {
       const forecastEl = document.getElementById('weatherForecast');
       if (forecastEl && data.forecast3Days) {
         forecastEl.innerHTML = data.forecast3Days.map(f => `
-          <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 text-center space-y-1">
+          <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-center space-y-1">
             <div class="text-xs text-slate-500 font-medium">${f.date}</div>
-            <div class="text-sm font-bold text-slate-100 my-0.5">${f.tempMin}° - ${f.tempMax}°C</div>
-            <div class="text-xs text-cyan-400 font-medium">🌧️ Mưa: ${f.rainProb}%</div>
+            <div class="text-sm font-bold text-slate-700 my-0.5">${f.tempMin}° - ${f.tempMax}°C</div>
+            <div class="text-xs text-cyan-700 font-medium">🌧️ Mưa: ${f.rainProb}%</div>
           </div>
         `).join('');
       }
@@ -435,7 +435,7 @@ class AgriVietApp {
           </span>
         </td>
         <td class="py-3.5 px-3">
-          <select data-log-id="${escapeHTML(l.id)}" class="status-select bg-slate-950 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-700 focus:ring-1 focus:ring-emerald-500">
+          <select data-log-id="${escapeHTML(l.id)}" class="status-select bg-white border border-slate-300 text-xs rounded-lg px-2.5 py-1.5 text-slate-700 focus:ring-1 focus:ring-emerald-500">
             <option value="Đang theo dõi" ${l.status === 'Đang theo dõi' ? 'selected' : ''}>Đang theo dõi</option>
             <option value="Đã xử lý" ${l.status === 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
             <option value="Đã khỏi bệnh" ${l.status === 'Đã khỏi bệnh' ? 'selected' : ''}>Đã khỏi bệnh</option>
@@ -486,7 +486,7 @@ class AgriVietApp {
       success: 'bg-emerald-600 text-white shadow-emerald-900/50',
       error: 'bg-rose-600 text-white shadow-rose-900/50',
       warning: 'bg-amber-600 text-white shadow-amber-900/50',
-      info: 'bg-white text-slate-100 border border-slate-700 shadow-slate-900/50'
+      info: 'bg-white text-slate-700 border border-slate-200 shadow-slate-900/50'
     };
 
     toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 transition-all transform duration-300 ${colors[type] || colors.info}`;
