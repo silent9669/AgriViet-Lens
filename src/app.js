@@ -33,7 +33,7 @@ class AgriVietApp {
     this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
     this.activeTab = 'scanner'; // 'scanner' | 'voice' | 'weather' | 'logbook'
     this.treatmentTab = 'organic'; // 'organic' | 'chemical'
-    this.tankCapacity = 25; // 16L | 25L | 200L
+    this.tankCapacity = 16; // 16L | 25L | 200L
   }
 
   init() {
@@ -239,7 +239,7 @@ class AgriVietApp {
     // Organic Tab
     const organic = data.organicTreatment || {};
     document.getElementById('organicSteps').innerHTML = (organic.steps || []).map((s, i) => `
-      <li class="flex items-start gap-3 text-sm text-slate-200">
+      <li class="flex items-start gap-3 text-sm text-slate-700">
         <span class="flex-shrink-0 w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs flex items-center justify-center font-mono font-bold">${i + 1}</span>
         <span class="leading-relaxed">${escapeHTML(s)}</span>
       </li>
@@ -255,7 +255,7 @@ class AgriVietApp {
 
     // Prevention List
     document.getElementById('seasonalPrevention').innerHTML = (data.seasonalPrevention || []).map(p => `
-      <li class="flex items-start gap-2.5 text-xs text-slate-300">
+      <li class="flex items-start gap-2.5 text-xs text-slate-600">
         <span class="text-emerald-400 font-bold shrink-0">✓</span>
         <span class="leading-relaxed">${escapeHTML(p)}</span>
       </li>
@@ -338,7 +338,7 @@ class AgriVietApp {
       chatContainer.innerHTML += `
         <div class="flex items-start gap-3 justify-start">
           <div class="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-xs font-bold text-emerald-400 shrink-0">AI</div>
-          <div class="bg-slate-900 border border-emerald-900/40 text-slate-200 rounded-2xl rounded-tl-none px-4 py-3.5 max-w-[85%] text-sm shadow-md space-y-2">
+          <div class="bg-white border border-emerald-900/40 text-slate-700 rounded-2xl rounded-tl-none px-4 py-3.5 max-w-[85%] text-sm shadow-md space-y-2">
             <p class="leading-relaxed">${escapeHTML(answer)}</p>
             <button class="btn-read-aloud text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 mt-2 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/40">
               🔊 Nghe phát âm
@@ -380,7 +380,7 @@ class AgriVietApp {
       if (forecastEl && data.forecast3Days) {
         forecastEl.innerHTML = data.forecast3Days.map(f => `
           <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80 text-center space-y-1">
-            <div class="text-xs text-slate-400 font-medium">${f.date}</div>
+            <div class="text-xs text-slate-500 font-medium">${f.date}</div>
             <div class="text-sm font-bold text-slate-100 my-0.5">${f.tempMin}° - ${f.tempMax}°C</div>
             <div class="text-xs text-cyan-400 font-medium">🌧️ Mưa: ${f.rainProb}%</div>
           </div>
@@ -426,8 +426,8 @@ class AgriVietApp {
 
     tableBody.innerHTML = logs.map(l => `
       <tr class="border-b border-slate-800/60 hover:bg-emerald-950/10 text-sm transition-colors">
-        <td class="py-3.5 px-3 text-slate-400 text-xs font-mono">${new Date(l.createdAt).toLocaleDateString('vi-VN')}</td>
-        <td class="py-3.5 px-3 font-bold text-slate-200">${escapeHTML(l.cropName)}</td>
+        <td class="py-3.5 px-3 text-slate-500 text-xs font-mono">${new Date(l.createdAt).toLocaleDateString('vi-VN')}</td>
+        <td class="py-3.5 px-3 font-bold text-slate-700">${escapeHTML(l.cropName)}</td>
         <td class="py-3.5 px-3 font-semibold text-emerald-400">${escapeHTML(l.diseaseNameVi)}</td>
         <td class="py-3.5 px-3">
           <span class="px-2.5 py-1 rounded-md text-xs font-medium ${l.severityLevel === 'Nghiêm trọng' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
@@ -435,7 +435,7 @@ class AgriVietApp {
           </span>
         </td>
         <td class="py-3.5 px-3">
-          <select data-log-id="${escapeHTML(l.id)}" class="status-select bg-slate-950 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-200 focus:ring-1 focus:ring-emerald-500">
+          <select data-log-id="${escapeHTML(l.id)}" class="status-select bg-slate-950 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-700 focus:ring-1 focus:ring-emerald-500">
             <option value="Đang theo dõi" ${l.status === 'Đang theo dõi' ? 'selected' : ''}>Đang theo dõi</option>
             <option value="Đã xử lý" ${l.status === 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
             <option value="Đã khỏi bệnh" ${l.status === 'Đã khỏi bệnh' ? 'selected' : ''}>Đã khỏi bệnh</option>
@@ -486,7 +486,7 @@ class AgriVietApp {
       success: 'bg-emerald-600 text-white shadow-emerald-900/50',
       error: 'bg-rose-600 text-white shadow-rose-900/50',
       warning: 'bg-amber-600 text-white shadow-amber-900/50',
-      info: 'bg-slate-900 text-slate-100 border border-slate-700 shadow-slate-900/50'
+      info: 'bg-white text-slate-100 border border-slate-700 shadow-slate-900/50'
     };
 
     toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 transition-all transform duration-300 ${colors[type] || colors.info}`;

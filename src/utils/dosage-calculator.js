@@ -12,7 +12,12 @@ export class DosageCalculator {
    */
   static calculateTankDosage(baseInstruction, targetCapacityLiters = 16) {
     const targetLiters = Number(targetCapacityLiters) || 16;
-    const multiplier = targetLiters / 16;
+    // Extract base liters from instruction (e.g. "bình 25L", "1 lít", "16L")
+    const baseMatch = typeof baseInstruction === 'string'
+      ? baseInstruction.match(/b[iì]nh\s+(\d+)\s*[Ll]|(\d+)\s*lít|(\d+)\s*L\b/)
+      : null;
+    const baseLiters = baseMatch ? Number(baseMatch[1] || baseMatch[2] || baseMatch[3]) : 16;
+    const multiplier = targetLiters / baseLiters;
 
     if (!baseInstruction) {
       return {
@@ -31,7 +36,7 @@ export class DosageCalculator {
       return {
         capacityLiters: targetLiters,
         multiplier,
-        calculatedDosageText: `${scaledAmount} ${unit} / bình ${targetLiters}L nước (Tỷ lệ gốc: ${originalAmount} ${unit} / 16L)`
+        calculatedDosageText: `${scaledAmount} ${unit} / bình ${targetLiters}L nước (Tỷ lệ gốc: ${originalAmount} ${unit} / ${baseLiters}L)`
       };
     }
 
