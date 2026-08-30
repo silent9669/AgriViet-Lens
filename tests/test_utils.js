@@ -11,6 +11,19 @@ assert.strictEqual(calc16.multiplier, 1);
 assert.ok(calc16.calculatedDosageText.includes('20 ml'));
 assert.ok(calc16.calculatedDosageText.includes('bình 16L nước'));
 
+const base16g = 'Pha 20g / bình 16L nước';
+const scaled25L = DosageCalculator.calculateTankDosage(base16g, 25);
+assert.strictEqual(scaled25L.capacityLiters, 25);
+assert.strictEqual(scaled25L.multiplier, 25 / 16);
+assert.ok(scaled25L.calculatedDosageText.includes('31.3 g'));
+assert.ok(scaled25L.calculatedDosageText.includes('bình 25L nước'));
+
+const scaled200L = DosageCalculator.calculateTankDosage(base16g, 200);
+assert.strictEqual(scaled200L.capacityLiters, 200);
+assert.strictEqual(scaled200L.multiplier, 200 / 16);
+assert.ok(scaled200L.calculatedDosageText.includes('250 g'));
+assert.ok(scaled200L.calculatedDosageText.includes('bình 200L nước'));
+
 const calc25 = DosageCalculator.calculateTankDosage(base20ml, 25);
 assert.strictEqual(calc25.capacityLiters, 25);
 assert.strictEqual(calc25.multiplier, 25 / 16);
@@ -42,6 +55,9 @@ assert.ok(calcCc.calculatedDosageText.includes('12.5 cc'));
 
 const calcVien = DosageCalculator.calculateTankDosage('4viên / bình 16L', 25);
 assert.ok(calcVien.calculatedDosageText.includes('6.3 viên'));
+
+assert.strictEqual(typeof ImageProcessor.compressImage, 'function', 'ImageProcessor.compressImage must be a function');
+assert.strictEqual(typeof ImageProcessor.optimizeImage, 'function', 'ImageProcessor.optimizeImage must remain available');
 
 const nodeImage = await ImageProcessor.optimizeImage('data:image/png;base64,abc');
 assert.deepStrictEqual(nodeImage, {
