@@ -37,6 +37,20 @@
   --color-status-warning-ink: #713f12;
   --color-status-success-ink: #14532d;
 
+  /* Garden & Medicine category & status tokens */
+  --badge-bio-bg: oklch(93% 0.06 145);
+  --badge-bio-text: #14532d;
+  --badge-chem-bg: oklch(92% 0.05 240);
+  --badge-chem-text: #1e3a8a;
+
+  --gauge-healthy: oklch(58% 0.16 145);
+  --gauge-warning: oklch(68% 0.16 75);
+  --gauge-danger: oklch(55% 0.22 25);
+
+  --shopee-orange: #ee4d2d;
+  --shopee-orange-hover: #d73211;
+  --color-on-shopee: #ffffff;
+
   /* Typography */
   --font-display: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -113,6 +127,20 @@
   --color-status-alert-ink: #fecaca;
   --color-status-warning-ink: #fde68a;
   --color-status-success-ink: #bbf7d0;
+
+  /* Garden & Medicine category & status tokens */
+  --badge-bio-bg: oklch(28% 0.06 145);
+  --badge-bio-text: #86efac;
+  --badge-chem-bg: oklch(28% 0.06 240);
+  --badge-chem-text: #93c5fd;
+
+  --gauge-healthy: oklch(70% 0.16 145);
+  --gauge-warning: oklch(76% 0.15 75);
+  --gauge-danger: oklch(70% 0.18 25);
+
+  --shopee-orange: #ee4d2d;
+  --shopee-orange-hover: #ff5e3a;
+  --color-on-shopee: #ffffff;
 }
 
 /* Base reset — clipped viewport and field-ready contrast. */
@@ -635,23 +663,21 @@ a {
   }
 }
 
-/* Single-screen workbench contract. The shell owns the viewport; only panels scroll. */
+/* Responsive mobile-first workbench shell. Natural scrolling without zero-scroll cramming. */
 html,
 body {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  overflow-x: clip;
 }
 
 .app-shell {
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
 .main-workspace {
-  flex: 1;
-  min-height: 0;
+  flex: 1 0 auto;
   display: flex;
 }
 
@@ -756,33 +782,16 @@ body {
   box-shadow: 0 2px 0 var(--color-primary-hover);
 }
 
-/* Panels with potentially long content keep the page itself stationary. */
+/* Panels and scrollable areas */
 .scanner-column,
 .view,
 .chat-stream,
 .treatment-panel,
 .table-wrap {
-  min-height: 0;
   scrollbar-color: var(--color-border-strong) transparent;
-  scroll-behavior: smooth;
 }
 
 @media (max-width: 767px) {
-  html,
-  body {
-    overflow: auto;
-  }
-
-  .app-shell {
-    min-height: 100vh;
-    height: auto;
-    overflow: visible;
-  }
-
-  .main-workspace {
-    display: block;
-  }
-
   .model-toggle {
     width: 100%;
     overflow-x: auto;
