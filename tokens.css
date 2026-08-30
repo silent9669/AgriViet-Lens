@@ -1,0 +1,491 @@
+/* Hallmark · macrostructure: Workbench · tone: utilitarian-botanical · anchor hue: forest-green */
+
+/* Garden / Field Almanac — locked OKLCH design tokens. */
+:root {
+  /* Canvas, paper, and surfaces */
+  --color-paper: oklch(97.5% 0.01 125);
+  --color-surface: oklch(100% 0 0);
+  --color-surface-soft: oklch(96% 0.02 125);
+  --color-surface-raised: oklch(99% 0.005 125);
+
+  /* Text and ink */
+  --color-ink: oklch(22% 0.04 140);
+  --color-muted: oklch(45% 0.03 140);
+  --color-subtle: oklch(62% 0.02 140);
+
+  /* Brand, status, and contrast */
+  --color-primary: oklch(42% 0.12 150);
+  --color-primary-hover: oklch(36% 0.13 150);
+  --color-primary-soft: oklch(93% 0.04 150);
+  --color-accent: oklch(62% 0.18 65);
+  --color-accent-soft: oklch(95% 0.04 65);
+  --color-alert: oklch(55% 0.22 25);
+  --color-alert-soft: oklch(95% 0.04 25);
+  --color-success: oklch(58% 0.16 145);
+  --color-success-soft: oklch(93% 0.04 145);
+  --color-border: oklch(91% 0.02 125);
+  --color-border-strong: oklch(80% 0.04 125);
+  --color-focus: oklch(42% 0.12 150);
+  --color-on-primary: oklch(100% 0 0);
+  --color-on-alert: oklch(100% 0 0);
+  --color-overlay: oklch(22% 0.04 140 / 0.68);
+  --color-shadow: oklch(22% 0.04 140 / 0.08);
+  --color-shadow-strong: oklch(22% 0.04 140 / 0.14);
+
+  /* Typography */
+  --font-display: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+
+  /* Spacing scale — 4pt base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-11: 44px;
+  --space-12: 48px;
+
+  /* Shape, depth, and motion */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px var(--color-shadow);
+  --shadow-md: 0 4px 12px var(--color-shadow);
+  --shadow-lg: 0 8px 24px var(--color-shadow-strong);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.64, 0, 0.78, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 150ms;
+  --dur-base: 180ms;
+  --dur-slow: 280ms;
+}
+
+[data-theme="dark"] {
+  /* Night field canvas and surfaces */
+  --color-paper: oklch(18% 0.03 140);
+  --color-surface: oklch(24% 0.04 140);
+  --color-surface-soft: oklch(20% 0.03 140);
+  --color-surface-raised: oklch(28% 0.04 140);
+
+  /* Light ink for outdoor-readable dark mode */
+  --color-ink: oklch(96% 0.01 125);
+  --color-muted: oklch(78% 0.03 125);
+  --color-subtle: oklch(70% 0.02 125);
+
+  /* Brightened interactive and status colors */
+  --color-primary: oklch(58% 0.16 145);
+  --color-primary-hover: oklch(64% 0.17 145);
+  --color-primary-soft: oklch(26% 0.05 145);
+  --color-accent: oklch(72% 0.16 65);
+  --color-accent-soft: oklch(28% 0.06 65);
+  --color-alert: oklch(70% 0.18 25);
+  --color-alert-soft: oklch(28% 0.07 25);
+  --color-success: oklch(70% 0.16 145);
+  --color-success-soft: oklch(28% 0.06 145);
+  --color-border: oklch(30% 0.04 140);
+  --color-border-strong: oklch(40% 0.06 140);
+  --color-focus: oklch(68% 0.16 145);
+  --color-on-primary: oklch(18% 0.03 140);
+  --color-on-alert: oklch(18% 0.03 140);
+  --color-overlay: oklch(8% 0.03 140 / 0.72);
+  --color-shadow: oklch(8% 0.03 140 / 0.2);
+  --color-shadow-strong: oklch(8% 0.03 140 / 0.4);
+}
+
+/* Base reset — clipped viewport and field-ready contrast. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  min-height: 48px;
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-style: normal;
+  letter-spacing: -0.015em;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.16em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
+}
+
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-ink);
+}
+
+/* Focus is visible immediately and never animates. */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Shared interactive state contract. */
+.btn-primary,
+.btn-secondary,
+.nav-tab-btn {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* Button — default, hover, active, and disabled. */
+.btn-primary {
+  min-height: 48px;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 700;
+  box-shadow: 0 3px 0 var(--color-primary-hover), var(--shadow-sm);
+}
+
+.btn-primary:hover:not(:disabled):not([data-state="loading"]):not([data-state="error"]):not([data-state="success"]),
+.btn-primary.is-hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.btn-primary:active:not(:disabled),
+.btn-primary.is-active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--color-primary-hover);
+}
+
+.btn-primary:disabled,
+.btn-primary[aria-disabled="true"] {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Button — loading, error, and success. */
+.btn-primary[data-state="loading"],
+.btn-primary.is-loading,
+.btn-secondary[data-state="loading"],
+.btn-secondary.is-loading,
+.nav-tab-btn[data-state="loading"],
+.nav-tab-btn.is-loading {
+  cursor: wait;
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.btn-primary[data-state="loading"]::before,
+.btn-primary.is-loading::before,
+.btn-secondary[data-state="loading"]::before,
+.btn-secondary.is-loading::before,
+.nav-tab-btn[data-state="loading"]::before,
+.nav-tab-btn.is-loading::before {
+  width: 1em;
+  height: 1em;
+  content: "";
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  animation: hallmark-spin 700ms linear infinite;
+}
+
+.btn-primary[data-state="error"],
+.btn-primary.is-error,
+.btn-secondary[data-state="error"],
+.btn-secondary.is-error,
+.nav-tab-btn[data-state="error"],
+.nav-tab-btn.is-error {
+  border-color: var(--color-alert);
+  color: var(--color-alert);
+}
+
+.btn-primary[data-state="error"],
+.btn-primary.is-error {
+  background-color: var(--color-alert);
+  color: var(--color-on-alert);
+}
+
+.btn-primary[data-state="success"],
+.btn-primary.is-success,
+.btn-secondary[data-state="success"],
+.btn-secondary.is-success,
+.nav-tab-btn[data-state="success"],
+.nav-tab-btn.is-success {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.btn-primary[data-state="success"],
+.btn-primary.is-success {
+  background-color: var(--color-success);
+  color: var(--color-on-primary);
+}
+
+/* Secondary button — default, hover, active, and disabled. */
+.btn-secondary {
+  min-height: 48px;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary:hover:not(:disabled):not([data-state="loading"]):not([data-state="error"]):not([data-state="success"]),
+.btn-secondary.is-hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-surface-soft);
+  color: var(--color-primary);
+}
+
+.btn-secondary:active:not(:disabled),
+.btn-secondary.is-active {
+  transform: translateY(1px);
+}
+
+.btn-secondary:disabled,
+.btn-secondary[aria-disabled="true"] {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Workbench cards — calm default and tactile state feedback. */
+.card-workbench,
+.card-workbench-soft {
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+
+.card-workbench {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.card-workbench:hover,
+.card-workbench.is-hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-workbench:active,
+.card-workbench.is-active {
+  transform: translateY(1px);
+}
+
+.card-workbench[aria-disabled="true"],
+.card-workbench[data-state="loading"],
+.card-workbench.is-loading {
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.card-workbench[data-state="error"],
+.card-workbench.is-error {
+  border-color: var(--color-alert);
+  background-color: var(--color-alert-soft);
+}
+
+.card-workbench[data-state="success"],
+.card-workbench.is-success {
+  border-color: var(--color-success);
+  background-color: var(--color-success-soft);
+}
+
+.card-workbench-soft {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-soft);
+}
+
+.card-workbench-soft:hover,
+.card-workbench-soft.is-hover {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface-raised);
+}
+
+.card-workbench-soft:active,
+.card-workbench-soft.is-active {
+  transform: translateY(1px);
+}
+
+.card-workbench-soft[aria-disabled="true"],
+.card-workbench-soft[data-state="loading"],
+.card-workbench-soft.is-loading {
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.card-workbench-soft[data-state="error"],
+.card-workbench-soft.is-error {
+  border-color: var(--color-alert);
+  background-color: var(--color-alert-soft);
+}
+
+.card-workbench-soft[data-state="success"],
+.card-workbench-soft.is-success {
+  border-color: var(--color-success);
+  background-color: var(--color-success-soft);
+}
+
+/* Workbench tab — default, hover, active, disabled, and status states. */
+.nav-tab-btn {
+  min-height: 48px;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background-color: transparent;
+  color: var(--color-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nav-tab-btn:hover:not(:disabled):not([data-state="loading"]):not([data-state="error"]):not([data-state="success"]),
+.nav-tab-btn.is-hover {
+  background-color: var(--color-surface-soft);
+  color: var(--color-primary);
+}
+
+.nav-tab-btn:active:not(:disabled),
+.nav-tab-btn.is-active {
+  transform: translateY(1px);
+}
+
+.nav-tab-btn.active,
+.nav-tab-btn[aria-selected="true"] {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.nav-tab-btn:disabled,
+.nav-tab-btn[aria-disabled="true"] {
+  transform: none;
+}
+
+.nav-tab-btn[data-state="error"],
+.nav-tab-btn.is-error {
+  border-bottom-color: var(--color-alert);
+  color: var(--color-alert);
+}
+
+.nav-tab-btn[data-state="success"],
+.nav-tab-btn.is-success {
+  border-bottom-color: var(--color-success);
+  color: var(--color-success);
+}
+
+@keyframes hallmark-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
