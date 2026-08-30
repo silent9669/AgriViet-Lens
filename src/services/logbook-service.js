@@ -3,7 +3,7 @@
  * Manages local storage records of crop scans, treatment actions, and CSV export.
  */
 
-const STORAGE_KEY = 'agriviet_farm_logbook_v1';
+const STORAGE_KEY = 'agriviet_farm_logbook_v2';
 
 export class LogbookService {
   /**
@@ -31,12 +31,12 @@ export class LogbookService {
       cropName: diagnosisData.cropName || 'Cây Trồng',
       diseaseNameVi: diagnosisData.diseaseNameVi || 'Bệnh chưa xác định',
       severityLevel: diagnosisData.severityLevel || 'Trung bình',
-      confidenceScore: diagnosisData.confidenceScore || 90,
+      confidenceScore: diagnosisData.confidenceScore ?? 90,
       location: diagnosisData.location || 'Vườn nhà',
       notes: diagnosisData.notes || 'Chẩn đoán tự động từ AgriViet Lens',
       status: 'Đang theo dõi', // 'Đang theo dõi' | 'Đã xử lý' | 'Đã khỏi bệnh'
       thumbnail: diagnosisData.thumbnail || null,
-      quarantineDays: diagnosisData?.chemicalTreatment?.quarantineDays || 0
+      quarantineDays: diagnosisData.quarantineDays ?? diagnosisData?.chemicalTreatment?.quarantineDays ?? 0
     };
 
     logs.unshift(newEntry);
