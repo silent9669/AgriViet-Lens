@@ -5,7 +5,7 @@
   "main": "src/app.js",
   "type": "module",
   "scripts": {
-    "test": "node tests/test_offline_db.js && node tests/test_gemini_service.js && node tests/test_services.js && node tests/test_utils.js",
+    "test": "node tests/test_hallmark_tokens.js && node tests/test_gemini_service.js && node tests/test_services.js && node tests/test_utils.js",
     "test:e2e": "node tests/e2e_test.js",
     "start": "npx serve -l 3000 ."
   },
