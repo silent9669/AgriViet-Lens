@@ -1,6 +1,7 @@
 /**
  * AgriViet Lens - Main Application Controller
- * Orchestrates image diagnosis, treatment dosage, voice assistance, weather risk,
+ * Orchestrates AI crop pathology diagnosis, virtual garden simulation,
+ * agricultural pharmacy & Shopee finder, weather radar risk analysis,
  * and the local VietGAP logbook.
  */
 
@@ -8,14 +9,17 @@ import { SAMPLE_PRESETS } from './data/sample-presets.js';
 import { GeminiService, GEMINI_MODELS } from './services/gemini-service.js';
 import { WeatherRadarService, VIETNAM_REGIONS } from './services/weather-radar.js';
 import { LogbookService } from './services/logbook-service.js';
+import { GardenService, PLANT_TEMPLATES } from './services/garden-service.js';
+import { MedicineService } from './services/medicine-service.js';
 import { ImageProcessor } from './utils/image-processor.js';
 import { DosageCalculator } from './utils/dosage-calculator.js';
 import { renderIcon } from './utils/icons.js';
 
-const NAVIGATION_TABS = ['scanner', 'voice', 'weather', 'logbook'];
+const NAVIGATION_TABS = ['scanner', 'garden', 'medicine', 'weather', 'logbook'];
 const VIEW_IDS = {
   scanner: 'viewScanner',
-  voice: 'viewVoice',
+  garden: 'viewGarden',
+  medicine: 'viewMedicine',
   weather: 'viewWeather',
   logbook: 'viewLogbook'
 };
@@ -75,6 +79,9 @@ export class AgriVietApp {
     this.selectedCrop = 'rice';
     this.treatmentTab = 'organic';
     this.currentDosageInstruction = '';
+    this.medicineSearchQuery = '';
+    this.medicineCategory = 'all';
+
     this.recognition = null;
     this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
     this._toastTimer = null;
@@ -83,9 +90,10 @@ export class AgriVietApp {
   init() {
     this.applyTheme();
     this.setupSpeech();
-    this.bindPresets();
     this.bindEvents();
     this.loadWeather();
+    this.renderGarden();
+    this.renderMedicineCatalog();
     this.renderLogbook();
 
     if (SAMPLE_PRESETS[0]) {
@@ -94,7 +102,7 @@ export class AgriVietApp {
   }
 
   /**
-   * Bind the top-level workbench navigation to the four main views.
+   * Bind the top-level workbench navigation across all 5 main views.
    */
   bindNavigation() {
     if (typeof document === 'undefined') return;
@@ -123,6 +131,14 @@ export class AgriVietApp {
     Object.entries(VIEW_IDS).forEach(([name, id]) => {
       setHidden(getElement(id), name !== nextTab);
     });
+
+    if (nextTab === 'garden') {
+      this.renderGarden();
+    } else if (nextTab === 'medicine') {
+      this.renderMedicineCatalog();
+    } else if (nextTab === 'logbook') {
+      this.renderLogbook();
+    }
   }
 
   setSelectedModel(model) {
@@ -182,8 +198,7 @@ export class AgriVietApp {
     const analyzeButton = getElement('analyzeBtn');
     if (analyzeButton) analyzeButton.disabled = !this.currentImageBase64;
 
-    // Presets are deliberately analyzed immediately so the offline workbench
-    // has a useful diagnosis on first load.
+    // Presets are analyzed immediately for instant ready workbench state.
     void this.runAnalysis();
   }
 
@@ -368,8 +383,6 @@ export class AgriVietApp {
       const diagnosis = await GeminiService.diagnoseCropImage(this.currentImageBase64, {
         model: this.selectedModel,
         apiKey: this.apiKey,
-        // Retain the selected crop only for the offline demo preset; Gemini
-        // identifies the crop autonomously for online diagnosis.
         cropHint: this.selectedCrop
       });
 
@@ -472,6 +485,51 @@ export class AgriVietApp {
     this.currentDosageInstruction = chemical.dosageInstructions || '';
     this.switchTreatmentTab(this.treatmentTab);
     this.renderTankDosage();
+
+    // Render embedded Shopee pharmacy recommendations for this diagnosed condition
+    this.renderDiagnosisShopeeCards(data);
+  }
+
+  /**
+   * Renders matching Shopee medicine cards into the diagnosis results panel
+   */
+  renderDiagnosisShopeeCards(data) {
+    const container = getElement('diagnosisShopeeCards');
+    if (!container) return;
+
+    let matchingMedicines = MedicineService.findMedicinesForDisease(data.diseaseNameVi || data.diseaseNameScientific || '');
+    if (!matchingMedicines || matchingMedicines.length === 0) {
+      matchingMedicines = MedicineService.searchMedicines(data.cropName || '', 'all').slice(0, 3);
+    }
+    if (!matchingMedicines || matchingMedicines.length === 0) {
+      matchingMedicines = MedicineService.getAllMedicines().slice(0, 2);
+    }
+
+    container.innerHTML = matchingMedicines.slice(0, 4).map(med => {
+      const isBio = med.category === 'bio';
+      const categoryBadge = isBio
+        ? '<span class="badge badge-bio">Sinh học VietGAP</span>'
+        : '<span class="badge badge-chem">Hóa học đặc trị</span>';
+      const shopeeUrl = MedicineService.getShopeeSearchUrl(med);
+
+      return `
+        <div class="treatment-shopee-card">
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              ${categoryBadge}
+              <span class="font-mono text-xs text-primary font-bold">${escapeHTML(med.priceDisplay.split('/')[0].trim())}</span>
+            </div>
+            <h4 class="font-extrabold text-sm text-ink mt-2 leading-tight">${escapeHTML(med.name)}</h4>
+            <p class="text-xs text-muted mt-1 italic">${escapeHTML(med.activeIngredient)}</p>
+            <p class="text-xs text-muted mt-2"><strong>Liều:</strong> ${escapeHTML(med.dosageGuide)}</p>
+          </div>
+          <a href="${escapeHTML(shopeeUrl)}" target="_blank" rel="noopener noreferrer" class="shopee-btn mt-3" aria-label="Mua ${escapeHTML(med.name)} trên Shopee Việt Nam">
+            <svg class="icon-sm flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            <span>Mua trên Shopee</span>
+          </a>
+        </div>
+      `;
+    }).join('');
   }
 
   switchTreatmentTab(tab) {
@@ -529,6 +587,443 @@ export class AgriVietApp {
     output.textContent = result.calculatedDosageText;
     return result;
   }
+
+  /**
+   * ==========================================
+   * VIRTUAL GARDEN SIMULATION ENGINE METHODS
+   * ==========================================
+   */
+
+  renderGarden() {
+    const grid = getElement('gardenPlotsGrid');
+    if (!grid) return;
+
+    const plots = GardenService.getPlots();
+    const totalPlots = getElement('gardenTotalPlots');
+    const healthyPlots = getElement('gardenHealthyPlots');
+    const warningPlots = getElement('gardenWarningPlots');
+    const readyPlots = getElement('gardenReadyPlots');
+
+    const totalCount = plots.length;
+    const healthyCount = plots.filter(p => (p.healthScore ?? 100) >= 80 && (!p.activeDiseases || p.activeDiseases.length === 0)).length;
+    const warningCount = plots.filter(p => (p.healthScore ?? 100) < 80 || (p.activeDiseases && p.activeDiseases.length > 0)).length;
+    const readyCount = plots.filter(p => (p.growthProgress ?? 0) >= 90).length;
+
+    if (totalPlots) totalPlots.textContent = String(totalCount);
+    if (healthyPlots) healthyPlots.textContent = String(healthyCount);
+    if (warningPlots) warningPlots.textContent = String(warningCount);
+    if (readyPlots) readyPlots.textContent = String(readyCount);
+
+    // Weather impact banner for virtual garden
+    const weatherBanner = getElement('gardenWeatherBanner');
+    const weatherText = getElement('gardenWeatherText');
+    if (weatherBanner) {
+      if (this.currentWeather && (this.currentWeather.humidity > 80 || this.currentWeather.risk?.level === 'Nguy cơ Cao' || this.currentWeather.temp > 34)) {
+        if (weatherText) {
+          weatherText.textContent = this.currentWeather.risk?.warningText || `Cảnh báo vi khí hậu (${this.currentWeather.regionName || 'khu vực'}): Độ ẩm cao ${this.currentWeather.humidity}%, nguy cơ bùng phát nấm lá và bệnh đạo ôn tăng cao!`;
+        }
+        setHidden(weatherBanner, false);
+      } else {
+        setHidden(weatherBanner, true);
+      }
+    }
+
+    if (plots.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-garden col-span-full">
+          <span class="empty-garden-icon" aria-hidden="true">🌱</span>
+          <h3 class="text-lg font-extrabold text-ink">Chưa có thửa ruộng nào trong vườn</h3>
+          <p class="text-sm text-muted max-w-md">Bắt đầu mô phỏng mùa vụ bằng cách tạo thửa ruộng đầu tiên cho Lúa ST25, Sầu riêng Ri6, Cà phê hoặc Rau màu.</p>
+          <button id="emptyAddPlotBtn" type="button" class="btn btn-primary mt-2">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"/></svg>
+            <span>+ Thêm thửa ruộng đầu tiên</span>
+          </button>
+        </div>
+      `;
+      const emptyAddBtn = getElement('emptyAddPlotBtn');
+      if (emptyAddBtn) {
+        emptyAddBtn.addEventListener('click', () => this.openAddPlotModal());
+      }
+      return;
+    }
+
+    grid.innerHTML = plots.map(plot => {
+      const hasDiseases = Array.isArray(plot.activeDiseases) && plot.activeDiseases.length > 0;
+      const isReady = (plot.growthProgress ?? 0) >= 90;
+      const healthScore = Math.max(0, Math.min(100, Number(plot.healthScore) || 0));
+      const moisture = Math.max(0, Math.min(100, Number(plot.moisture ?? plot.waterLevel) || 0));
+      const growthProgress = Math.max(0, Math.min(100, Number(plot.growthProgress) || 0));
+      const healthClass = healthScore < 50 ? 'is-danger' : healthScore < 80 ? 'is-warning' : '';
+      const cardClass = `plot-card ${hasDiseases ? 'is-sick' : ''} ${isReady ? 'is-ready' : ''}`;
+
+      const template = PLANT_TEMPLATES.find(t => t.key === plot.plantKey) || PLANT_TEMPLATES[0];
+      const iconSvg = renderIcon(template.iconName || 'leaf', { size: 28, strokeWidth: 1.8 });
+
+      const diseasesHtml = hasDiseases ? `
+        <div class="flex flex-wrap gap-1 mt-1">
+          ${plot.activeDiseases.map(d => `
+            <span class="plot-disease-tag">
+              <svg class="icon-sm flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 9 17H3L12 3Z"/><path d="M12 9v4M12 16.5v.01"/></svg>
+              <span>${escapeHTML(d.diseaseName || d.diseaseNameVi || 'Bệnh hại')}</span>
+            </span>
+          `).join('')}
+        </div>
+      ` : '';
+
+      return `
+        <article class="${cardClass}" data-plot-id="${escapeHTML(plot.id)}">
+          <div class="plot-header">
+            <div class="min-w-0">
+              <span class="badge ${template.badgeClass || 'badge-success'} mb-1">${escapeHTML(plot.category || template.category)}</span>
+              <h3 class="plot-title">${escapeHTML(plot.name)}</h3>
+              <p class="plot-crop-type">${escapeHTML(template.name)} · Ngày ${escapeHTML(plot.daysElapsed || 1)}</p>
+            </div>
+            <button type="button" class="icon-btn btn-delete-plot" data-action="delete" data-plot-id="${escapeHTML(plot.id)}" aria-label="Xóa thửa ruộng" title="Xóa thửa ruộng">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7l1-3h4l1 3"/></svg>
+            </button>
+          </div>
+
+          <div class="plot-visual-row">
+            <div class="plot-icon-wrap" aria-hidden="true">
+              ${iconSvg}
+            </div>
+            <div class="plot-stage-info">
+              <span class="plot-stage-badge">${escapeHTML(plot.stageLabel || 'Đang sinh trưởng')}</span>
+              <span class="plot-days-count">Chu kỳ: ${growthProgress}% / ${escapeHTML(plot.growthCycleDays || template.growthCycleDays)} ngày</span>
+            </div>
+          </div>
+
+          <div class="plot-meters">
+            <div class="meter-row">
+              <div class="meter-label-row">
+                <span>Tiến độ sinh trưởng</span>
+                <span class="meter-val">${growthProgress}%</span>
+              </div>
+              <div class="meter-bar">
+                <div class="meter-fill-growth" style="width: ${growthProgress}%"></div>
+              </div>
+            </div>
+
+            <div class="meter-row">
+              <div class="meter-label-row">
+                <span>Sức khỏe cây trồng</span>
+                <span class="meter-val">${healthScore}%</span>
+              </div>
+              <div class="meter-bar">
+                <div class="meter-fill-health ${healthClass}" style="width: ${healthScore}%"></div>
+              </div>
+            </div>
+
+            <div class="meter-row">
+              <div class="meter-label-row">
+                <span>Độ ẩm đất</span>
+                <span class="meter-val">${moisture}%</span>
+              </div>
+              <div class="meter-bar">
+                <div class="meter-fill-moisture" style="width: ${moisture}%"></div>
+              </div>
+            </div>
+          </div>
+
+          ${diseasesHtml}
+
+          <div class="care-btn-group">
+            <button type="button" class="care-btn" data-action="water" data-plot-id="${escapeHTML(plot.id)}">
+              <svg class="icon-sm text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7.2 17.5h10.3a4 4 0 0 0 .6-7.95A6.2 6.2 0 0 0 6.25 8.2a4.65 4.65 0 0 0 .95 9.3Z"/><path d="m8 20-1 2M12 20l-1 2M16 20l-1 2"/></svg>
+              <span>Tưới nước</span>
+            </button>
+            <button type="button" class="care-btn" data-action="fertilize" data-plot-id="${escapeHTML(plot.id)}">
+              <svg class="icon-sm text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20V7"/><path d="M12 11c-3.8-1.1-6-3.2-6.6-6.1C9.1 4.9 11.2 6 12 8.3"/><path d="M12 14.2c3.8-1.1 6-3.2 6.6-6.1-3.7 0-5.8 1.1-6.6 3.4"/><path d="M6 20h12"/></svg>
+              <span>Bón phân</span>
+            </button>
+            <button type="button" class="care-btn" data-action="treat" data-plot-id="${escapeHTML(plot.id)}" ${hasDiseases ? '' : 'disabled'}>
+              <svg class="icon-sm text-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 3h6"/><path d="M10 3v6.2L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.1 15h9.8"/></svg>
+              <span>Trị bệnh</span>
+            </button>
+            <button type="button" class="care-btn ${isReady ? 'care-btn-harvest' : ''}" data-action="harvest" data-plot-id="${escapeHTML(plot.id)}" ${isReady ? '' : 'disabled'}>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m4 12.5 5 5L20 6.5"/></svg>
+              <span>${isReady ? 'Thu hoạch ngay!' : 'Thu hoạch'}</span>
+            </button>
+          </div>
+        </article>
+      `;
+    }).join('');
+  }
+
+  handleGardenAction(action, plotId) {
+    if (!plotId) return;
+
+    if (action === 'water') {
+      GardenService.performCare(plotId, 'water');
+      this.showToast('Đã tưới nước bổ sung độ ẩm đất.', 'success');
+      this.renderGarden();
+    } else if (action === 'fertilize') {
+      GardenService.performCare(plotId, 'fertilize');
+      this.showToast('Đã bón phân vi sinh thúc đẩy tăng trưởng.', 'success');
+      this.renderGarden();
+    } else if (action === 'treat') {
+      GardenService.performCare(plotId, 'treat');
+      this.showToast('Đã phun chế phẩm sinh học trị sạch mầm bệnh.', 'success');
+      this.renderGarden();
+    } else if (action === 'harvest') {
+      const result = GardenService.performCare(plotId, 'harvest');
+      if (result && result.success === false) {
+        this.showToast(result.message || 'Cây chưa đạt độ chín thu hoạch.', 'warning');
+      } else {
+        this.showToast('Thu hoạch mùa vụ thành công! Vụ mùa mới đã sẵn sàng.', 'success');
+      }
+      this.renderGarden();
+    } else if (action === 'delete') {
+      GardenService.deletePlot(plotId);
+      this.showToast('Đã xóa thửa ruộng khỏi vườn.', 'info');
+      this.renderGarden();
+    }
+  }
+
+  openAddPlotModal() {
+    const modal = getElement('addPlotModal');
+    const select = getElement('newPlotTemplateSelect');
+    const nameInput = getElement('newPlotNameInput');
+    const notesInput = getElement('newPlotNotesInput');
+
+    if (select) {
+      select.innerHTML = PLANT_TEMPLATES.map(template => (
+        `<option value="${escapeHTML(template.key)}">${escapeHTML(template.name)} (${escapeHTML(template.category)})</option>`
+      )).join('');
+    }
+
+    if (nameInput) nameInput.value = '';
+    if (notesInput) notesInput.value = '';
+
+    setHidden(modal, false);
+    nameInput?.focus?.();
+  }
+
+  closeAddPlotModal() {
+    setHidden(getElement('addPlotModal'), true);
+  }
+
+  confirmAddPlot() {
+    const select = getElement('newPlotTemplateSelect');
+    const nameInput = getElement('newPlotNameInput');
+    const notesInput = getElement('newPlotNotesInput');
+
+    const templateKey = select?.value || 'rice';
+    const customName = nameInput?.value?.trim() || '';
+    const notes = notesInput?.value?.trim() || '';
+
+    const newPlot = GardenService.addPlot(templateKey, customName, notes);
+    this.closeAddPlotModal();
+    this.showToast(`Đã tạo thửa ruộng “${newPlot.name}” thành công!`, 'success');
+    this.renderGarden();
+    return newPlot;
+  }
+
+  assignDiagnosisToGarden() {
+    if (!this.currentDiagnosis) {
+      this.showToast('Chưa có kết quả chẩn đoán nào để gán vào vườn.', 'warning');
+      return null;
+    }
+
+    const plots = GardenService.getPlots();
+    let targetPlot = plots.find(p => (
+      p.plantKey === this.selectedCrop ||
+      (this.currentDiagnosis.cropName && p.name.toLowerCase().includes(this.currentDiagnosis.cropName.toLowerCase()))
+    ));
+
+    if (!targetPlot && plots.length > 0) {
+      targetPlot = plots[0];
+    } else if (!targetPlot) {
+      targetPlot = GardenService.addPlot(this.selectedCrop || 'rice', `Thửa ruộng ${this.currentDiagnosis.cropName || 'mới'}`);
+    }
+
+    GardenService.logDisease(targetPlot.id, {
+      diseaseName: this.currentDiagnosis.diseaseNameVi,
+      severity: this.currentDiagnosis.severityLevel,
+      diagnosedAt: new Date().toISOString(),
+      notes: this.currentDiagnosis.symptomsSummary
+    });
+
+    this.showToast(`Đã gán ca bệnh “${this.currentDiagnosis.diseaseNameVi}” vào thửa “${targetPlot.name}”.`, 'success');
+    this.switchNavTab('garden');
+    return targetPlot;
+  }
+
+  bindGardenEvents() {
+    if (typeof document === 'undefined') return;
+
+    const addPlotBtn = getElement('addPlotBtn');
+    const waterAllBtn = getElement('waterAllBtn');
+    const resetGardenBtn = getElement('resetGardenBtn');
+    const closeAddModalBtn = getElement('closeAddPlotModalBtn');
+    const cancelAddPlotBtn = getElement('cancelAddPlotBtn');
+    const addPlotForm = getElement('addPlotForm');
+    const gardenGrid = getElement('gardenPlotsGrid');
+    const linkToGardenBtn = getElement('linkToGardenBtn');
+
+    if (addPlotBtn && addPlotBtn.dataset.agrivietGardenBound !== 'true') {
+      addPlotBtn.dataset.agrivietGardenBound = 'true';
+      addPlotBtn.addEventListener('click', () => this.openAddPlotModal());
+    }
+
+    if (waterAllBtn && waterAllBtn.dataset.agrivietGardenBound !== 'true') {
+      waterAllBtn.dataset.agrivietGardenBound = 'true';
+      waterAllBtn.addEventListener('click', () => {
+        const plots = GardenService.getPlots();
+        plots.forEach(p => GardenService.performCare(p.id, 'water'));
+        this.showToast('Đã tưới nước cho toàn bộ các thửa ruộng.', 'success');
+        this.renderGarden();
+      });
+    }
+
+    if (resetGardenBtn && resetGardenBtn.dataset.agrivietGardenBound !== 'true') {
+      resetGardenBtn.dataset.agrivietGardenBound = 'true';
+      resetGardenBtn.addEventListener('click', () => {
+        GardenService.resetGarden();
+        this.showToast('Đã đặt lại vườn ảo về trạng thái mẫu ban đầu.', 'info');
+        this.renderGarden();
+      });
+    }
+
+    if (closeAddModalBtn && closeAddModalBtn.dataset.agrivietGardenBound !== 'true') {
+      closeAddModalBtn.dataset.agrivietGardenBound = 'true';
+      closeAddModalBtn.addEventListener('click', () => this.closeAddPlotModal());
+    }
+
+    if (cancelAddPlotBtn && cancelAddPlotBtn.dataset.agrivietGardenBound !== 'true') {
+      cancelAddPlotBtn.dataset.agrivietGardenBound = 'true';
+      cancelAddPlotBtn.addEventListener('click', () => this.closeAddPlotModal());
+    }
+
+    if (addPlotForm && addPlotForm.dataset.agrivietGardenBound !== 'true') {
+      addPlotForm.dataset.agrivietGardenBound = 'true';
+      addPlotForm.addEventListener('submit', event => {
+        event.preventDefault();
+        this.confirmAddPlot();
+      });
+    }
+
+    if (linkToGardenBtn && linkToGardenBtn.dataset.agrivietGardenBound !== 'true') {
+      linkToGardenBtn.dataset.agrivietGardenBound = 'true';
+      linkToGardenBtn.addEventListener('click', () => this.assignDiagnosisToGarden());
+    }
+
+    if (gardenGrid && gardenGrid.dataset.agrivietGardenBound !== 'true') {
+      gardenGrid.dataset.agrivietGardenBound = 'true';
+      gardenGrid.addEventListener('click', event => {
+        const button = event.target.closest('[data-action]');
+        if (!button) return;
+        const action = button.getAttribute('data-action');
+        const plotId = button.getAttribute('data-plot-id');
+        if (action && plotId) {
+          this.handleGardenAction(action, plotId);
+        }
+      });
+    }
+  }
+
+  /**
+   * ==========================================
+   * PHARMACY & SHOPEE FINDER METHODS
+   * ==========================================
+   */
+
+  renderMedicineCatalog(query = this.medicineSearchQuery, category = this.medicineCategory) {
+    const grid = getElement('medicineCatalogGrid');
+    const badge = getElement('medicineCountBadge');
+    if (!grid) return;
+
+    const medicines = MedicineService.searchMedicines(query, category);
+
+    if (badge) {
+      badge.textContent = `${medicines.length} sản phẩm`;
+    }
+
+    if (medicines.length === 0) {
+      grid.innerHTML = `
+        <div class="col-span-full p-10 text-center rounded-lg border border-border bg-surface-soft">
+          <p class="text-base font-bold text-ink">Không tìm thấy sản phẩm phù hợp</p>
+          <p class="text-sm text-muted mt-1">Thử tìm kiếm với từ khóa khác như "Trichoderma", "đạo ôn", "sầu riêng"...</p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = medicines.map(med => {
+      const isBio = med.category === 'bio';
+      const categoryBadge = isBio
+        ? '<span class="badge badge-bio">Sinh học VietGAP</span>'
+        : '<span class="badge badge-chem">Hóa học đặc trị</span>';
+      const shopeeUrl = MedicineService.getShopeeSearchUrl(med);
+
+      return `
+        <article class="medicine-card" data-medicine-id="${escapeHTML(med.id)}">
+          <div class="medicine-card-header">
+            <div class="min-w-0">
+              ${categoryBadge}
+              <h3 class="medicine-title mt-2">${escapeHTML(med.name)}</h3>
+              <p class="medicine-ingredient mt-1">${escapeHTML(med.activeIngredient)}</p>
+            </div>
+          </div>
+
+          <div class="medicine-tags">
+            ${(med.targetDiseases || []).map(d => `<span class="medicine-tag">${escapeHTML(d)}</span>`).join('')}
+          </div>
+
+          <div class="medicine-price-box">
+            <span class="medicine-price-label">Giá thị trường:</span>
+            <span class="medicine-price">${escapeHTML(med.priceDisplay)}</span>
+          </div>
+
+          <div class="dosage-box">
+            <p><strong>Liều pha:</strong> ${escapeHTML(med.dosageGuide)}</p>
+            <p class="mt-1"><strong>Cách ly PHI:</strong> ${med.quarantineDays > 0 ? `${med.quarantineDays} ngày` : '0 ngày (an toàn VietGAP)'}</p>
+            <p class="mt-1 text-subtle text-[11px]">${escapeHTML(med.safetyNotes)}</p>
+          </div>
+
+          <a href="${escapeHTML(shopeeUrl)}" target="_blank" rel="noopener noreferrer" class="shopee-btn" aria-label="Tìm mua ${escapeHTML(med.name)} trên Shopee Việt Nam">
+            <svg class="icon-sm flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+            <span>Tìm mua trên Shopee</span>
+          </a>
+        </article>
+      `;
+    }).join('');
+  }
+
+  bindMedicineEvents() {
+    if (typeof document === 'undefined') return;
+
+    const searchInput = getElement('medicineSearchInput');
+    if (searchInput && searchInput.dataset.agrivietMedicineBound !== 'true') {
+      searchInput.dataset.agrivietMedicineBound = 'true';
+      searchInput.addEventListener('input', event => {
+        this.medicineSearchQuery = event.target.value;
+        this.renderMedicineCatalog();
+      });
+    }
+
+    const filterPills = document.querySelectorAll('.filter-pill');
+    filterPills.forEach(pill => {
+      if (pill.dataset.agrivietMedicineBound === 'true') return;
+      pill.dataset.agrivietMedicineBound = 'true';
+      pill.addEventListener('click', () => {
+        const cat = pill.getAttribute('data-category') || 'all';
+        this.medicineCategory = cat;
+        filterPills.forEach(p => {
+          const active = p === pill;
+          p.classList.toggle('active', active);
+          p.setAttribute('aria-checked', String(active));
+        });
+        this.renderMedicineCatalog();
+      });
+    });
+  }
+
+  /**
+   * ==========================================
+   * SPEECH & VOICE ASSISTANT METHODS
+   * ==========================================
+   */
 
   setupSpeech() {
     this.setupSpeechRecognition();
@@ -708,6 +1203,12 @@ export class AgriVietApp {
     this.synth.speak?.(utterance);
   }
 
+  /**
+   * ==========================================
+   * WEATHER RADAR METHODS
+   * ==========================================
+   */
+
   async loadWeather(regionIdx = 0) {
     const container = getElement('weatherData');
     if (!container) return null;
@@ -758,6 +1259,10 @@ export class AgriVietApp {
       if (riskAlert) riskAlert.textContent = risk.warningText || 'Chưa có cảnh báo thời tiết.';
 
       this.renderHourlyTrend(data.hourly);
+
+      // Link real-time weather effects to the virtual garden
+      GardenService.applyWeatherEffect(data);
+
       return data;
     } catch (error) {
       console.error('[AgriVietApp] Weather load failed:', error);
@@ -777,8 +1282,6 @@ export class AgriVietApp {
     const trend = getElement('hourlyTrend');
     if (!trend) return;
 
-    // Regional/offline forecasts may not include hourly values; never leave
-    // stale bars from the previously selected region on screen.
     trend.innerHTML = '';
 
     const humidityValues = Array.isArray(hourly?.relative_humidity_2m)
@@ -797,6 +1300,12 @@ export class AgriVietApp {
       return `<div class="trend-column"><span class="trend-bar" style="height: ${height}px" title="${escapeHTML(value)}%"></span><span class="trend-label">${escapeHTML(label)}</span></div>`;
     }).join('');
   }
+
+  /**
+   * ==========================================
+   * VIETGAP LOGBOOK METHODS
+   * ==========================================
+   */
 
   renderLogbook() {
     const tableBody = getElement('logbookList') || (
@@ -985,6 +1494,9 @@ export class AgriVietApp {
     this.bindNavigation();
     this.bindModelToggle();
     this.bindDropzoneAndUpload();
+    this.bindPresets();
+    this.bindGardenEvents();
+    this.bindMedicineEvents();
 
     const themeButton = getElement('themeToggleBtn');
     if (themeButton && themeButton.dataset.agrivietBound !== 'true') {
@@ -1057,13 +1569,15 @@ export class AgriVietApp {
     if (askButton && askButton.dataset.agrivietBound !== 'true') {
       askButton.dataset.agrivietBound = 'true';
       askButton.addEventListener('click', () => {
-        this.switchNavTab('voice');
-        const prompt = this.currentDiagnosis?.diseaseNameVi
-          ? `Bệnh ${this.currentDiagnosis.diseaseNameVi} cần xử lý thế nào?`
-          : 'Tôi nên kiểm tra cây trồng này như thế nào?';
-        const input = getElement('voiceTextInput');
-        if (input) input.value = prompt;
-        void this.submitVoiceQuery(prompt);
+        this.switchNavTab('medicine');
+        if (this.currentDiagnosis?.diseaseNameVi) {
+          const input = getElement('medicineSearchInput');
+          if (input) {
+            input.value = this.currentDiagnosis.diseaseNameVi;
+            this.medicineSearchQuery = this.currentDiagnosis.diseaseNameVi;
+            this.renderMedicineCatalog();
+          }
+        }
       });
     }
 

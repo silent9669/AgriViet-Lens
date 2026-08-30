@@ -1885,9 +1885,13 @@
             <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.3 15.3 5.2 5.2M10.5 7.5v6M7.5 10.5h6"></path></svg>
             <span>Chẩn đoán sâu bệnh</span>
           </button>
-          <button id="navTabVoice" type="button" class="nav-tab-btn" data-tab="voice" role="tab" aria-controls="viewVoice" aria-selected="false">
-            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="8" y="3" width="8" height="12" rx="4"></rect><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M8 22h8"></path></svg>
-            <span>Trợ lý ruộng đồng</span>
+          <button id="navTabGarden" type="button" class="nav-tab-btn" data-tab="garden" role="tab" aria-controls="viewGarden" aria-selected="false">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.7 3.3C12.4 3.2 6.1 5.7 4 10.3c-1.6 3.4-.1 6.8 3.1 7.8 3.3 1 6.4-.9 8.2-3.8 1.4-2.4 2.5-5.9 5.4-11Z"></path><path d="M3.5 20.5c3.2-4.6 7-7.8 11.4-10.1"></path></svg>
+            <span>Vườn ảo thực tế</span>
+          </button>
+          <button id="navTabMedicine" type="button" class="nav-tab-btn" data-tab="medicine" role="tab" aria-controls="viewMedicine" aria-selected="false">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 3h6"></path><path d="M10 3v6.2L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.2V3"></path><path d="M7.1 15h9.8"></path></svg>
+            <span>Tủ thuốc &amp; Shopee</span>
           </button>
           <button id="navTabWeather" type="button" class="nav-tab-btn" data-tab="weather" role="tab" aria-controls="viewWeather" aria-selected="false">
             <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7.2 17.5h10.3a4 4 0 0 0 .6-7.95A6.2 6.2 0 0 0 6.25 8.2a4.65 4.65 0 0 0 .95 9.3Z"></path><path d="m8 20-1 2M12 20l-1 2M16 20l-1 2"></path></svg>
@@ -1964,34 +1968,6 @@
                   <svg id="analyzeIcon" class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.3 15.3 5.2 5.2M10.5 7.5v6M7.5 10.5h6"></path></svg>
                   <span id="analyzeLabel">Phân tích ảnh</span>
                   <svg id="analyzeSpinner" class="icon-sm hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
-                </button>
-              </div>
-            </section>
-
-            <section class="panel p-5 sm:p-6 preset-panel" aria-labelledby="presetHeading">
-              <div class="panel-header">
-                <div>
-                  <p class="eyebrow">1-click test presets</p>
-                  <h2 id="presetHeading" class="text-lg font-extrabold tracking-tight">Bốn ca bệnh quen thuộc</h2>
-                </div>
-                <span class="font-mono text-xs text-subtle">1-CLICK TEST</span>
-              </div>
-              <div class="mt-5 grid grid-cols-2 gap-2">
-                <button type="button" class="preset-btn" data-preset="rice">
-                  <span class="preset-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 20V7"></path><path d="M12 11c-3.8-1.1-6-3.2-6.6-6.1C9.1 4.9 11.2 6 12 8.3"></path><path d="M12 14.2c3.8-1.1 6-3.2 6.6-6.1-3.7 0-5.8 1.1-6.6 3.4"></path><path d="M6 20h12"></path></svg></span>
-                  <span>Lúa nước</span>
-                </button>
-                <button type="button" class="preset-btn" data-preset="durian">
-                  <span class="preset-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 20V7"></path><path d="M12 9c-2.8-3-5.6-3.2-7.5-1.9 1.2 3.1 3.7 4.3 7.5 3.9"></path><path d="M12 12c2.6-2.6 5.4-2.7 7.4-1.4-1.3 2.9-3.8 4-7.4 3.4"></path><path d="M6 20h12"></path></svg></span>
-                  <span>Sầu riêng</span>
-                </button>
-                <button type="button" class="preset-btn" data-preset="coffee">
-                  <span class="preset-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M5 8h11v6.5A4.5 4.5 0 0 1 11.5 19h-2A4.5 4.5 0 0 1 5 14.5V8Z"></path><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16M7 5c0-1 1-1 1-2M11 5c0-1 1-1 1-2"></path></svg></span>
-                  <span>Cà phê</span>
-                </button>
-                <button type="button" class="preset-btn" data-preset="dragonfruit">
-                  <span class="preset-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 20c-4.7 0-7.5-3.4-7.5-7.3C4.5 8.7 8.2 5 12 5s7.5 3.7 7.5 7.7C19.5 16.6 16.7 20 12 20Z"></path><path d="M8 6 6 3M12 5V2M16 6l2-3M8.5 11.5h.01M12 15h.01M15.5 11.5h.01"></path></svg></span>
-                  <span>Thanh long</span>
                 </button>
               </div>
             </section>
@@ -2097,14 +2073,27 @@
                 <p id="dosageSafetyAdvisory" class="dosage-advisory"><strong>An toàn:</strong> Đây là phép quy đổi tham khảo theo dung tích; luôn đối chiếu liều, cây trồng, thời gian cách ly và cảnh báo trên nhãn BVTV trước khi pha.</p>
               </div>
 
-              <div class="diagnosis-actions">
+              <div id="diagnosisShopeeSection" class="treatment-shopee-section">
+                <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p class="eyebrow">Tìm mua trực tuyến</p>
+                    <h3 class="text-lg font-extrabold tracking-tight">Thuốc &amp; Chế phẩm đề xuất trên Shopee</h3>
+                  </div>
+                  <span class="font-mono text-xs text-subtle">SHOPEE VIETNAM</span>
+                </div>
+                <div id="diagnosisShopeeCards" class="treatment-shopee-grid">
+                  <!-- Dynamically rendered Shopee cards -->
+                </div>
+              </div>
+
+              <div class="diagnosis-actions mt-5">
                 <button id="saveLogbookBtn" type="button" class="btn btn-primary flex-1">
                   <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 4h12l2 2v14H5V4Z"></path><path d="M8 4v6h8V4M8 20v-6h8v6"></path></svg>
                   <span>Lưu vào nhật ký</span>
                 </button>
-                <button id="askAboutDiseaseBtn" type="button" class="btn btn-secondary flex-1">
-                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9a2.5 2.5 0 1 1 4.1 1.9c-1.1.8-1.7 1.2-1.7 2.6M12 17h.01"></path></svg>
-                  <span>Hỏi AI</span>
+                <button id="linkToGardenBtn" type="button" class="btn btn-secondary flex-1">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.7 3.3C12.4 3.2 6.1 5.7 4 10.3c-1.6 3.4-.1 6.8 3.1 7.8 3.3 1 6.4-.9 8.2-3.8 1.4-2.4 2.5-5.9 5.4-11Z"></path><path d="M3.5 20.5c3.2-4.6 7-7.8 11.4-10.1"></path></svg>
+                  <span>Gán vào Vườn Ảo</span>
                 </button>
               </div>
             </section>
@@ -2112,54 +2101,91 @@
         </div>
       </section>
 
-      <section id="viewVoice" class="view space-y-6" role="tabpanel" aria-labelledby="navTabVoice" hidden>
+      <section id="viewGarden" class="view garden-view space-y-6" role="tabpanel" aria-labelledby="navTabGarden" hidden>
         <div class="section-intro">
           <div>
-            <p class="eyebrow">Trợ lý tại ruộng</p>
-            <h2 class="view-title">Hỏi bằng giọng nói hoặc vài dòng chữ.</h2>
-            <p class="view-description">Dùng tiếng Việt tự nhiên để hỏi về bệnh, dinh dưỡng, lịch chăm sóc hoặc cách xử lý an toàn.</p>
+            <p class="eyebrow">Vườn ảo đồng ruộng</p>
+            <h2 class="view-title">Nông trại ảo &amp; Nhật ký sinh trưởng thực tế.</h2>
+            <p class="view-description">Mô phỏng chu kỳ sinh trưởng cây trồng theo ngày, ẩm độ, phân bón và kết nối dữ liệu trực tiếp với chẩn đoán bệnh.</p>
           </div>
-          <span class="badge badge-success"><svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v10"></path><path d="M7.5 9.5a6 6 0 1 0 9 0"></path><path d="M12 19v2M8 21h8"></path></svg>vi-VN</span>
         </div>
 
-        <div class="mx-auto max-w-4xl space-y-6">
-          <section class="panel p-5 sm:p-8" aria-labelledby="voiceHeading">
-            <div class="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-center">
-              <div class="voice-station">
-                <button id="voiceRecordBtn" type="button" class="voice-record" aria-label="Bắt đầu ghi âm" aria-pressed="false">
-                  <svg class="h-9 w-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="8" y="3" width="8" height="12" rx="4"></rect><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M8 22h8"></path></svg>
-                </button>
-                <div id="voiceWaveform" class="voice-waveform" aria-hidden="true" hidden><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-                <p id="voiceRecordStatus" class="font-mono text-[11px] text-subtle">SẴN SÀNG</p>
-              </div>
-              <div>
-                <p class="eyebrow">Micro trạm đồng ruộng</p>
-                <h2 id="voiceHeading" class="text-2xl font-extrabold tracking-tight">Nói điều bạn đang thấy.</h2>
-                <p class="mt-2 text-sm leading-relaxed text-muted">Nhấn nút micro, nói một câu hỏi ngắn rồi chờ câu trả lời. Trình duyệt sẽ cần quyền truy cập micro.</p>
-                <div class="mt-5">
-                  <p class="field-label">Gợi ý câu hỏi</p>
-                  <div class="flex flex-wrap gap-2">
-                    <button type="button" class="voice-chip">Cách trị xì mủ sầu riêng vào mùa mưa?</button>
-                    <button type="button" class="voice-chip">Lúa bị đạo ôn nên làm gì?</button>
-                    <button type="button" class="voice-chip">Khi nào phun thuốc rỉ sắt cà phê?</button>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <article class="summary-stat">
+            <p class="metric-label">Tổng số thửa</p>
+            <p id="gardenTotalPlots" class="summary-number">0</p>
+          </article>
+          <article class="summary-stat">
+            <p class="metric-label">Tươi tốt</p>
+            <p id="gardenHealthyPlots" class="summary-number text-primary">0</p>
+          </article>
+          <article class="summary-stat">
+            <p class="metric-label">Cần chăm sóc</p>
+            <p id="gardenWarningPlots" class="summary-number text-alert">0</p>
+          </article>
+          <article class="summary-stat">
+            <p class="metric-label">Sẵn sàng thu hoạch</p>
+            <p id="gardenReadyPlots" class="summary-number text-accent">0</p>
+          </article>
+        </div>
 
-            <div id="voiceChatStream" class="chat-stream mt-6" aria-live="polite">
-              <div class="chat-row">
-                <span class="chat-avatar" aria-hidden="true">AI</span>
-                <div class="chat-bubble">Chào bà con. Nhấn nút micro để hỏi, hoặc nhập câu hỏi ở ô bên dưới.</div>
-              </div>
-            </div>
+        <div id="gardenWeatherBanner" class="status-strip hidden" role="status" aria-live="polite">
+          <svg class="icon-sm flex-shrink-0 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 9 17H3L12 3Z"></path><path d="M12 9v4M12 16.5v.01"></path></svg>
+          <p id="gardenWeatherText" class="text-sm font-semibold">Cảnh báo vi khí hậu: Độ ẩm cao làm tăng nguy cơ nấm lá.</p>
+        </div>
 
-            <form id="voiceQuestionForm" class="mt-4 flex gap-2">
-              <label class="sr-only" for="voiceTextInput">Câu hỏi cho trợ lý</label>
-              <input id="voiceTextInput" class="control min-w-0 flex-1 px-4 text-sm" type="text" placeholder="Ví dụ: Lá lúa có vết hình thoi thì xử lý thế nào?" autocomplete="off">
-              <button id="voiceSendBtn" type="submit" class="btn btn-primary shrink-0 px-5">Gửi câu hỏi</button>
-            </form>
-          </section>
+        <div class="garden-toolbar">
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="addPlotBtn" type="button" class="btn btn-primary">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14"></path></svg>
+              <span>Thêm thửa ruộng</span>
+            </button>
+            <button id="waterAllBtn" type="button" class="btn btn-secondary">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7.2 17.5h10.3a4 4 0 0 0 .6-7.95A6.2 6.2 0 0 0 6.25 8.2a4.65 4.65 0 0 0 .95 9.3Z"></path><path d="m8 20-1 2M12 20l-1 2M16 20l-1 2"></path></svg>
+              <span>Tưới tất cả</span>
+            </button>
+          </div>
+          <button id="resetGardenBtn" type="button" class="btn btn-quiet">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14.9-3.9L3 10"></path><path d="M3 5v5h5M4 13a8 8 0 0 0 14.9 3.9L21 14"></path><path d="M21 19v-5h-5"></path></svg>
+            <span>Đặt lại vườn</span>
+          </button>
+        </div>
+
+        <div id="gardenPlotsGrid" class="garden-grid" aria-live="polite">
+          <!-- Dynamic Garden Plot Cards -->
+        </div>
+      </section>
+
+      <section id="viewMedicine" class="view medicine-view space-y-6" role="tabpanel" aria-labelledby="navTabMedicine" hidden>
+        <div class="section-intro">
+          <div>
+            <p class="eyebrow">Dược phẩm cây trồng</p>
+            <h2 class="view-title">Tủ thuốc BVTV &amp; Tìm mua Shopee chính hãng.</h2>
+            <p class="view-description">Tra cứu danh mục hoạt chất thuốc BVTV, chế phẩm vi sinh hữu cơ VietGAP và đối chiếu giá thị trường với 1-click liên kết Shopee.</p>
+          </div>
+        </div>
+
+        <div class="panel p-5 sm:p-6 space-y-4">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div class="relative flex-1">
+              <label class="sr-only" for="medicineSearchInput">Tìm kiếm thuốc bảo vệ thực vật</label>
+              <input id="medicineSearchInput" class="field-control pl-10" type="text" placeholder="Tìm theo tên thuốc, hoạt chất (Trichoderma, Nano bạc, Tricyclazole...) hoặc tên bệnh...">
+              <svg class="icon-sm absolute left-3 top-1/2 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            </div>
+            <div class="medicine-filter-bar" role="radiogroup" aria-label="Lọc theo loại thuốc">
+              <button id="medCatAll" type="button" class="filter-pill active" data-category="all" role="radio" aria-checked="true">Tất cả</button>
+              <button id="medCatBio" type="button" class="filter-pill" data-category="bio" role="radio" aria-checked="false">Sinh học VietGAP</button>
+              <button id="medCatChem" type="button" class="filter-pill" data-category="chemical" role="radio" aria-checked="false">Hóa học đặc trị</button>
+            </div>
+          </div>
+          <div class="flex items-center justify-between border-t border-border pt-3">
+            <span id="medicineCountBadge" class="badge badge-success font-mono text-xs">10 sản phẩm</span>
+            <span class="font-mono text-xs text-subtle">Giá tham khảo &amp; Liên kết Shopee VN</span>
+          </div>
+        </div>
+
+        <div id="medicineCatalogGrid" class="medicine-grid" aria-live="polite">
+          <!-- Dynamic Medicine Cards -->
         </div>
       </section>
 
@@ -2296,6 +2322,44 @@
     </main>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <div id="addPlotModal" class="modal-backdrop fixed inset-0 hidden" role="dialog" aria-modal="true" aria-labelledby="addPlotModalHeading">
+      <div class="modal-card panel p-5 sm:p-7">
+        <div class="flex items-start justify-between gap-4 border-b border-border pb-5">
+          <div>
+            <p class="eyebrow">Canh tác mới</p>
+            <h2 id="addPlotModalHeading" class="text-xl font-extrabold tracking-tight">Thêm thửa ruộng mới</h2>
+          </div>
+          <button id="closeAddPlotModalBtn" type="button" class="icon-btn" aria-label="Đóng cửa sổ" title="Đóng cửa sổ">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 5l14 14M19 5 5 19"></path></svg>
+          </button>
+        </div>
+
+        <form id="addPlotForm" class="mt-5 space-y-4">
+          <div>
+            <label class="field-label" for="newPlotTemplateSelect">Chọn giống cây trồng</label>
+            <select id="newPlotTemplateSelect" class="field-control">
+              <!-- Dynamically populated from PLANT_TEMPLATES -->
+            </select>
+          </div>
+
+          <div>
+            <label class="field-label" for="newPlotNameInput">Tên thửa / Vị trí lô ruộng</label>
+            <input id="newPlotNameInput" class="field-control" type="text" placeholder="Ví dụ: Thửa Lúa ST25 - Lô B2" required>
+          </div>
+
+          <div>
+            <label class="field-label" for="newPlotNotesInput">Ghi chú canh tác (tùy chọn)</label>
+            <input id="newPlotNotesInput" class="field-control" type="text" placeholder="Ví dụ: Đất phù sa ngọt, bón lót phân vi sinh">
+          </div>
+
+          <div class="mt-6 flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
+            <button id="cancelAddPlotBtn" type="button" class="btn btn-secondary">Hủy</button>
+            <button id="confirmAddPlotBtn" type="submit" class="btn btn-primary">Tạo thửa ruộng</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <div id="apiKeyModal" class="modal-backdrop fixed inset-0 hidden" role="dialog" aria-modal="true" aria-labelledby="apiKeyHeading">
       <div class="modal-card panel p-5 sm:p-7">
