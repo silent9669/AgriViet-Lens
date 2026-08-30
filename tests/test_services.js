@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { WeatherRadarService, VIETNAM_REGIONS } from '../src/services/weather-radar.js';
 import { LogbookService } from '../src/services/logbook-service.js';
+import { GardenService, PLANT_TEMPLATES } from '../src/services/garden-service.js';
+import { MedicineService, MEDICINE_CATALOG } from '../src/services/medicine-service.js';
+import { OFFLINE_DISEASES, getOfflineDiagnosis } from '../src/data/offline-diseases.js';
 import { ICONS, renderIcon } from '../src/utils/icons.js';
 import { SAMPLE_PRESETS, getPresetDiagnosis } from '../src/data/sample-presets.js';
 
@@ -177,4 +180,75 @@ assert.ok(riceDiagnosis.chemicalTreatment.activeIngredients);
 assert.ok(riceDiagnosis.seasonalPrevention.length > 0);
 assert.strictEqual(getPresetDiagnosis('missing-crop'), undefined);
 
-console.log('✅ All Weather Radar, Logbook, SVG Icon, and Sample Preset tests passed successfully!');
+// 7. Cross-service integration: MedicineService matching against OFFLINE_DISEASES catalog
+console.log('Testing MedicineService & OFFLINE_DISEASES cross-service matching...');
+assert.ok(MEDICINE_CATALOG.length >= 8, 'Medicine catalog should contain registered treatments');
+assert.ok(PLANT_TEMPLATES.length >= 4, 'Plant templates should cover core Vietnamese crops');
+const requiredCrops = ['rice', 'durian', 'coffee', 'dragonfruit'];
+
+for (const cropKey of requiredCrops) {
+  const profile = OFFLINE_DISEASES[cropKey];
+  assert.ok(profile, `Missing offline disease profile for ${cropKey}`);
+
+  // Test disease name matching
+  const matchingByDisease = MedicineService.findMedicinesForDisease(profile.diseaseNameVi);
+  assert.ok(matchingByDisease.length >= 1, `MedicineService should find products for ${profile.diseaseNameVi}`);
+
+  // Test full diagnosis payload matching
+  const matchingByDiagnosis = MedicineService.findMedicinesForDiagnosis(profile);
+  assert.ok(matchingByDiagnosis.length >= 1, `MedicineService should find recommendations for ${cropKey} diagnosis`);
+
+  matchingByDiagnosis.forEach(med => {
+    assert.ok(med.id, 'Matching medicine missing id');
+    assert.ok(med.name, 'Matching medicine missing name');
+    assert.ok(['bio', 'chemical'].includes(med.category), `Invalid category: ${med.category}`);
+    assert.ok(med.shopeeUrl.startsWith('https://shopee.vn/search?keyword='), `Invalid Shopee URL: ${med.shopeeUrl}`);
+    assert.ok(med.shopeeUrl.includes(encodeURIComponent(med.shopeeKeyword)), 'Shopee URL should contain encoded keyword');
+  });
+}
+
+// 8. Cross-service integration: GardenService reacting to WeatherRadarService & Disease Linking
+console.log('Testing GardenService responding to WeatherRadarService and pathology linking...');
+
+// Reset garden to clean state
+GardenService.resetGarden();
+const initialGardenPlots = GardenService.getPlots();
+assert.strictEqual(initialGardenPlots.length, 2);
+
+// Apply wet weather from regional radar
+const wetWeather = {
+  temp: 26.5,
+  humidity: 89,
+  rainProb: 75,
+  condition: 'Mưa rào rải rác'
+};
+GardenService.applyWeatherEffect(wetWeather);
+let plotsAfterWet = GardenService.getPlots();
+assert.ok(plotsAfterWet.every(p => p.moisture >= 70), 'Plot moisture should be elevated during wet weather');
+assert.ok(plotsAfterWet.some(p => p.weatherWarnings.some(w => w.type === 'high_humidity_fungus_risk')), 'Fungal risk warning should be triggered');
+
+// Link offline pathology to a garden plot
+const durianDisease = getOfflineDiagnosis('durian');
+const durianPlot = GardenService.getPlots().find(p => p.plantKey === 'durian');
+assert.ok(durianPlot, 'Durian plot should exist in starter garden');
+
+const healthBeforeDisease = durianPlot.healthScore;
+GardenService.logDisease(durianPlot.id, {
+  diseaseName: durianDisease.diseaseNameVi,
+  severity: durianDisease.severityLevel,
+  treatment: durianDisease.organicTreatment.bioProducts,
+  notes: durianDisease.symptomsSummary
+});
+
+const infectedPlot = GardenService.getPlotById(durianPlot.id);
+assert.ok(infectedPlot.healthScore < healthBeforeDisease, 'Health score should decrease after disease infection');
+assert.strictEqual(infectedPlot.activeDiseases.length, 1);
+assert.strictEqual(infectedPlot.activeDiseases[0].diseaseName, durianDisease.diseaseNameVi);
+
+// Perform treatment care action
+const treatedPlot = GardenService.performCare(durianPlot.id, 'treat', 'Phun chế phẩm sinh học trị xì mủ');
+assert.strictEqual(treatedPlot.activeDiseases.length, 0, 'Active diseases should be cleared after treatment');
+assert.ok(treatedPlot.healthScore > infectedPlot.healthScore, 'Health score should recover after treatment');
+assert.strictEqual(treatedPlot.careHistory[0].action, 'treat');
+
+console.log('✅ All Weather Radar, Logbook, SVG Icon, Sample Preset, and Cross-Service tests passed successfully!');

@@ -534,7 +534,19 @@ async function run() {
     assert.ok(shopeeContainer.children.length > 0, 'Shopee cards should be rendered in diagnosis');
     assert.match(shopeeContainer.innerHTML, /Shopee/i, 'Shopee cards should contain Shopee purchase CTA');
 
-    // 7. Test Virtual Garden Tab & Simulation
+    // 7. Linking Diagnosis to a Virtual Garden Plot
+    const linkGardenBtn = document.getElementById('linkToGardenBtn');
+    if (linkGardenBtn) {
+      linkGardenBtn.click();
+      assert.equal(app.activeTab, 'garden', 'Linking diagnosis should navigate to Garden tab');
+      const plotsAfterLink = GardenService.getPlots();
+      const infectedRicePlot = plotsAfterLink.find(p => p.plantKey === 'rice');
+      assert.ok(infectedRicePlot, 'Rice plot should exist in garden');
+      assert.ok(infectedRicePlot.activeDiseases.length >= 1, 'Infected plot should have logged disease');
+      assert.equal(infectedRicePlot.activeDiseases[0].diseaseName, 'Bệnh Đạo Ôn Lá');
+    }
+
+    // 8. Test Virtual Garden Tab & Complete Care Lifecycle (Water, Treat, Fertilize, Harvest)
     document.getElementById('navTabGarden').click();
     assert.equal(app.activeTab, 'garden');
     const gardenPlotsGrid = document.getElementById('gardenPlotsGrid');
@@ -544,10 +556,33 @@ async function run() {
 
     // Test watering action
     const plots = GardenService.getPlots();
-    const initialMoisture = plots[0].moisture;
-    app.handleGardenAction('water', plots[0].id);
-    const updatedPlot = GardenService.getPlotById(plots[0].id);
+    const ricePlot = plots.find(p => p.plantKey === 'rice') || plots[0];
+    const initialMoisture = ricePlot.moisture;
+    app.handleGardenAction('water', ricePlot.id);
+    let updatedPlot = GardenService.getPlotById(ricePlot.id);
     assert.ok(updatedPlot.moisture >= initialMoisture, 'Moisture should increase after watering');
+
+    // Test treat action (curing disease on infected rice plot)
+    assert.ok(updatedPlot.activeDiseases.length >= 1, 'Plot should be diseased before treatment');
+    app.handleGardenAction('treat', ricePlot.id);
+    updatedPlot = GardenService.getPlotById(ricePlot.id);
+    assert.equal(updatedPlot.activeDiseases.length, 0, 'Active diseases should be cleared after treat action');
+    assert.ok(updatedPlot.careHistory.some(c => c.action === 'treat'), 'Care history should record treat action');
+
+    // Test fertilizing action & growth progression to harvest
+    for (let cycle = 0; cycle < 5; cycle += 1) {
+      app.handleGardenAction('fertilize', ricePlot.id);
+    }
+    updatedPlot = GardenService.getPlotById(ricePlot.id);
+    assert.equal(updatedPlot.growthProgress, 100, 'Plot progress should reach 100% after fertilizing');
+    assert.equal(updatedPlot.growthStage, 'harvest', 'Plot should reach harvest stage');
+
+    // Test harvest action
+    app.handleGardenAction('harvest', ricePlot.id);
+    updatedPlot = GardenService.getPlotById(ricePlot.id);
+    assert.equal(updatedPlot.growthProgress, 0, 'Growth progress should reset to 0 after harvest');
+    assert.equal(updatedPlot.growthStage, 'seedling', 'Growth stage should reset to seedling after harvest');
+    assert.equal(updatedPlot.harvestCount, 1, 'Harvest count should increment to 1');
 
     // Test Add Plot Modal & Creation
     app.openAddPlotModal();
@@ -560,7 +595,7 @@ async function run() {
     assert.equal(document.getElementById('addPlotModal').hidden, true, 'Add Plot modal should close after submit');
     assert.ok(GardenService.getPlots().some(p => p.name === 'Vườn Cà Phê Mới'), 'New plot should be added to garden');
 
-    // 8. Test Medicine & Shopee Pharmacy Tab
+    // 9. Test Medicine & Shopee Pharmacy Tab
     document.getElementById('navTabMedicine').click();
     assert.equal(app.activeTab, 'medicine');
     const medGrid = document.getElementById('medicineCatalogGrid');
@@ -575,6 +610,13 @@ async function run() {
       assert.equal(medGrid.children.length, 5, 'Bio filter should show 5 bio products');
     }
 
+    const chemPill = document.getElementById('medCatChem');
+    if (chemPill) {
+      chemPill.click();
+      assert.equal(app.medicineCategory, 'chemical');
+      assert.equal(medGrid.children.length, 5, 'Chemical filter should show 5 chemical products');
+    }
+
     const allPill = document.getElementById('medCatAll');
     if (allPill) {
       allPill.click();
@@ -582,16 +624,18 @@ async function run() {
       assert.equal(medGrid.children.length, 10, 'All filter should show 10 products');
     }
 
-    // Test Search filter
-    app.medicineSearchQuery = 'Trichoderma';
+    // Test Search filter with Shopee link verification
+    app.medicineSearchQuery = 'Aliette';
     app.renderMedicineCatalog();
-    assert.ok(medGrid.children.length >= 1, 'Search for Trichoderma should return matching products');
+    assert.ok(medGrid.children.length >= 1, 'Search for Aliette should return matching products');
+    assert.match(medGrid.innerHTML, /Aliette 800WG/);
+    assert.match(medGrid.innerHTML, /https:\/\/shopee\.vn\/search\?keyword=/);
 
     // Reset search
     app.medicineSearchQuery = '';
     app.renderMedicineCatalog();
 
-    // 9. Weather Service & Regional Radar Tests
+    // 10. Weather Service & Regional Radar Tests
     document.getElementById('navTabWeather').click();
     const regionalWeather = await WeatherRadarService.fetchRegionalWeather(2);
     assert.equal(regionalWeather.regionName, 'Đông Nam Bộ (Đồng Nai / Tiền Giang)');
@@ -607,7 +651,7 @@ async function run() {
     assert.equal(document.getElementById('weatherTemperature').textContent, '30°C');
     assert.equal(document.getElementById('weatherHumidity').textContent, '78%');
 
-    // 10. VietGAP Logbook Tests
+    // 11. VietGAP Logbook Tests
     document.getElementById('navTabLogbook').click();
     document.getElementById('navTabScanner').click();
     document.getElementById('saveLogbookBtn').click();
