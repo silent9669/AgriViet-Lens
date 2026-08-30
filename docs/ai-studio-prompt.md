@@ -4,7 +4,9 @@ Tài liệu này là gói import dành cho **Google AI Studio (`ai.dev`)**. Mở
 
 ## Model configuration
 
-Dùng cấu hình này cho luồng chẩn đoán ảnh với Gemini:
+Hỗ trợ 2 mô hình linh hoạt cho từng nhu cầu:
+- **Tốc độ thực địa:** `gemini-2.0-flash`
+- **Suy luận chuyên sâu:** `gemini-1.5-pro`
 
 ```json
 {
@@ -15,7 +17,7 @@ Dùng cấu hình này cho luồng chẩn đoán ảnh với Gemini:
 }
 ```
 
-- **Model:** Gemini 2.0 Flash
+- **Models:** `gemini-2.0-flash` (Mặc định) và `gemini-1.5-pro` (Chuyên sâu)
 - **Temperature:** `0.15` để ưu tiên kết quả ổn định, có cấu trúc
 - **Response MIME type:** `application/json`
 - **Top P:** `0.95`

@@ -5,7 +5,7 @@
 **AgriViet Lens** biến một bức ảnh trên đồng ruộng thành quyết định canh tác dễ hiểu: nhận diện dấu hiệu sâu bệnh, đối chiếu phác đồ VietGAP, tính đúng lượng thuốc theo dung tích bình, theo dõi vi khí hậu và lưu hồ sơ truy xuất. Một trải nghiệm field-first được thiết kế cho nông dân, kỹ sư nông nghiệp, hợp tác xã và ban giám khảo Google AI Riser Vietnam 2026.
 
 [![Google AI Studio](https://img.shields.io/badge/Google%20AI%20Studio-ai.dev-4285F4?logo=google)](https://ai.dev)
-[![Gemini 2.0 Flash](https://img.shields.io/badge/Gemini%202.0%20Flash-Multimodal%20Vision-34A853?logo=google-gemini)](https://ai.google.dev/gemini-api/docs)
+[![Gemini Dual Models](https://img.shields.io/badge/Gemini%202.0%20Flash%20%7C%201.5%20Pro-Multimodal%20Vision-34A853?logo=google-gemini)](https://ai.google.dev/gemini-api/docs)
 [![Web Speech API](https://img.shields.io/badge/Web%20Speech%20API-vi--VN-EA4335)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
 [![Hallmark Anti-AI-Slop](https://img.shields.io/badge/Hallmark-Anti--AI--Slop-24352B)](#hallmark-anti-ai-slop-design-system)
 [![VietGAP Ready](https://img.shields.io/badge/Standard-VietGAP%20Ready-059669)](#an-toan-va-vietgap)
@@ -40,16 +40,21 @@ AgriViet Lens nối liền năm bước vốn thường bị tách rời:
 
 ## Năm năng lực tạo khác biệt
 
-### 1. Bác sĩ Cây trồng Đa phương thức
+### 1. Bác sĩ Cây trồng Đa phương thức & Tự động Nhận diện Loại Cây
 
-**Gemini 2.0 Flash Multimodal Vision** phân tích ảnh chụp từ camera, tệp tải lên hoặc kéo-thả. Kết quả được chuẩn hóa để bà con có thể hành động ngay:
+**Gemini Multimodal Vision (Dual Models: 2.0 Flash & 1.5 Pro)** phân tích ảnh chụp từ camera hoặc tải lên. Không cần chọn loại cây thủ công — Gemini tự động nhận diện loài cây trồng và giải phẫu bệnh lý:
 
-- cây trồng và bệnh bằng tiếng Việt;
-- tên khoa học Latin;
-- độ tin cậy theo phần trăm và mức độ: Nhẹ, Trung bình hoặc Nghiêm trọng;
-- triệu chứng quan sát được và nguyên nhân có khả năng;
-- phác đồ Sinh học/VietGAP và Hóa học Đặc trị;
-- khuyến nghị phòng bệnh theo mùa.
+- **Tự động nhận diện loài cây:** Nhận diện chính xác cây trồng (Lúa nước, Sầu riêng, Cà phê, Thanh long, Cao su, Bưởi, Cam, v.v.);
+- **Chuyển đổi mô hình linh hoạt (Dual Models):**
+  - `⚡ Gemini 2.0 Flash`: Tốc độ phản hồi tức thì (<1s), tiết kiệm tài nguyên cho thao tác nhanh ngoài đồng ruộng.
+  - `🧠 Gemini 1.5 Pro`: Phân tích sâu cơ chế bệnh sinh thực vật và suy luận phác đồ điều trị phức tạp.
+- **Kết quả chẩn đoán toàn diện:**
+  - Tên cây trồng và tên bệnh bằng tiếng Việt;
+  - Tên khoa học Latin của mầm bệnh;
+  - Độ tin cậy (%) và mức độ nghiêm trọng: Nhẹ, Trung bình hoặc Nghiêm trọng;
+  - Triệu chứng quan sát được và nguyên nhân vi khí hậu/tác nhân gây bệnh;
+  - Phác đồ Sinh học/VietGAP song hành cùng Hóa học Đặc trị;
+  - Khuyến nghị phòng ngừa theo mùa canh tác tiếp theo.
 
 #### Bốn mẫu thử nghiệm một chạm cho ban giám khảo
 
@@ -109,7 +114,8 @@ AgriViet Lens không chọn giao diện dashboard mẫu. Nó dùng hệ thống 
 
 | Nguyên tắc | Triển khai trong sản phẩm |
 | --- | --- |
-| **Workbench layout** | Bố cục chia khu vực theo nhiệm vụ: chẩn đoán, phác đồ, radar, nhật ký; ưu tiên thông tin có thể hành động thay vì các thẻ trang trí. |
+| **Single-Screen Zero-Scroll Workbench** | Bố cục vừa vặn trọn vẹn màn hình desktop (100vh, zero-scroll), phân chia rõ 2 cột làm việc: Trạm nạp ảnh & chọn ca mẫu bên trái, Trạm chẩn đoán & phác đồ hành động bên phải. |
+| **Dual AI Models (Flash & Pro)** | Tích hợp nút chuyển đổi nhanh giữa Gemini 2.0 Flash (siêu tốc) và Gemini 1.5 Pro (chuyên sâu). |
 | **Field Almanac palette** | Nền giấy sáng, xanh rừng cho hành động chính, hổ phách cho cảnh báo, xanh lá cho trạng thái an toàn; có dark mode nhưng vẫn giữ tương phản. |
 | **100% SVG line icons** | Icon nét mảnh nội tuyến, có `aria-hidden` khi mang tính trang trí, không phụ thuộc emoji hay icon font. |
 | **Không emoji trong button/badge** | Nhãn điều khiển rõ nghĩa, ổn định trên Android, iOS và màn hình ngoài trời. |
