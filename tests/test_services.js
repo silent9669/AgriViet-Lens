@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { WeatherRadarService } from '../src/services/weather-radar.js';
 import { LogbookService } from '../src/services/logbook-service.js';
+import { ICONS, renderIcon } from '../src/utils/icons.js';
+import { SAMPLE_PRESETS, getPresetDiagnosis } from '../src/data/sample-presets.js';
 
 console.log('Testing Weather Radar & Farm Logbook Service Layers...');
 
@@ -78,4 +80,26 @@ const deleted = LogbookService.deleteLog(saved.id);
 assert.strictEqual(deleted, true);
 assert.strictEqual(LogbookService.getLogs().length, 0);
 
-console.log('✅ All Weather Radar & Logbook Service tests passed successfully!');
+// 4. Test SVG icon and high-fidelity sample preset contracts
+const iconNames = ['leaf', 'lens', 'camera', 'upload', 'beaker', 'mic', 'volume', 'cloudRain', 'book', 'download', 'key', 'sun', 'moon', 'check', 'alert', 'refresh', 'shield'];
+assert.strictEqual(Object.keys(ICONS).length, iconNames.length);
+iconNames.forEach(name => assert.ok(ICONS[name], `Missing icon: ${name}`));
+
+const iconMarkup = renderIcon('leaf', { className: 'h-6 w-6 text-emerald-600', strokeWidth: 1.75 });
+assert.ok(iconMarkup.startsWith('<svg'));
+assert.ok(iconMarkup.includes('h-6 w-6 text-emerald-600'));
+assert.ok(iconMarkup.includes('stroke-width="1.75"'));
+assert.ok(iconMarkup.includes(ICONS.leaf));
+
+assert.strictEqual(SAMPLE_PRESETS.length, 4);
+assert.deepStrictEqual(SAMPLE_PRESETS.map(preset => preset.cropKey), ['rice', 'durian', 'coffee', 'dragonfruit']);
+const riceDiagnosis = getPresetDiagnosis('rice');
+assert.strictEqual(riceDiagnosis.cropName, 'Lúa Nước');
+assert.strictEqual(riceDiagnosis.diseaseNameScientific, 'Pyricularia oryzae');
+assert.ok(riceDiagnosis.sampleImageBase64.startsWith('data:image/svg+xml;base64,'));
+assert.ok(riceDiagnosis.organicTreatment.steps.length > 0);
+assert.ok(riceDiagnosis.chemicalTreatment.activeIngredients);
+assert.ok(riceDiagnosis.seasonalPrevention.length > 0);
+assert.strictEqual(getPresetDiagnosis('missing-crop'), undefined);
+
+console.log('✅ All Weather Radar, Logbook, SVG Icon, and Sample Preset tests passed successfully!');
