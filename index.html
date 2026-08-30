@@ -1212,6 +1212,327 @@
         transition-duration: 0.01ms !important;
       }
     }
+    /* Single-screen workbench layout: chrome stays fixed while working surfaces scroll. */
+    .app-shell {
+      height: 100vh;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .header-inner {
+      min-height: 72px;
+      padding-block: var(--space-3);
+    }
+
+    .workspace-nav {
+      flex: 0 0 auto;
+    }
+
+    .main-workspace {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .main-shell {
+      width: min(100% - 32px, 1440px);
+      height: 100%;
+      min-height: 0;
+      padding-block: var(--space-4) var(--space-5);
+      overflow: hidden;
+    }
+
+    .view {
+      height: 100%;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-color: var(--color-border-strong) transparent;
+      scroll-behavior: smooth;
+    }
+
+    .scanner-view {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .scanner-intro {
+      flex: 0 0 auto;
+      padding-bottom: var(--space-3);
+    }
+
+    .scanner-intro .view-title {
+      font-size: clamp(1.55rem, 2.6vw, 2.2rem);
+    }
+
+    .scanner-intro .view-description {
+      max-width: 70ch;
+      margin-top: var(--space-2);
+    }
+
+    .scanner-workspace {
+      display: grid;
+      flex: 1;
+      min-height: 0;
+      grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.2fr);
+      gap: var(--space-4);
+      padding-top: var(--space-4);
+    }
+
+    .scanner-column {
+      display: flex;
+      min-width: 0;
+      min-height: 0;
+      flex-direction: column;
+      gap: var(--space-4);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-color: var(--color-border-strong) transparent;
+    }
+
+    .scanner-image-panel {
+      display: flex;
+      min-height: 0;
+      flex: 1 1 auto;
+      flex-direction: column;
+    }
+
+    .scanner-image-panel .mt-5 {
+      margin-top: var(--space-3);
+    }
+
+    .scanner-image-panel .dropzone {
+      min-height: 0;
+      height: clamp(200px, 33vh, 330px);
+    }
+
+    .scanner-image-panel .preview-frame {
+      min-height: 0;
+      height: 100%;
+    }
+
+    .scanner-image-panel .preview-frame img {
+      max-height: 100%;
+    }
+
+    .preset-panel {
+      flex: 0 0 auto;
+    }
+
+    .diagnosis-column {
+      padding-right: 2px;
+    }
+
+    #loadingSpinner {
+      flex: 0 0 auto;
+      padding: var(--space-6);
+    }
+
+    #diagnosisCard {
+      flex: 0 0 auto;
+    }
+
+    .diagnosis-header-actions {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: stretch;
+      gap: var(--space-3);
+    }
+
+    .diagnosis-header-actions .confidence-box {
+      min-width: 138px;
+    }
+
+    .listen-button {
+      align-self: flex-end;
+      min-height: 48px;
+      padding-inline: var(--space-3);
+    }
+
+    .diagnosis-crop::before {
+      margin-right: var(--space-1);
+      content: "\01F33E";
+      font-size: 0.95em;
+    }
+
+    .analysis-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .analysis-note {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin: 0;
+      color: var(--color-muted);
+      font-size: var(--text-xs);
+    }
+
+    .analysis-note-mark {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+    }
+
+    .analysis-button {
+      min-width: 180px;
+    }
+
+    .treatment-panel {
+      max-height: 300px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-color: var(--color-border-strong) transparent;
+    }
+
+    .diagnosis-actions {
+      display: flex;
+      gap: var(--space-2);
+    }
+
+    .diagnosis-actions .btn {
+      min-width: 0;
+    }
+
+    .chat-stream {
+      max-height: min(42vh, 360px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-color: var(--color-border-strong) transparent;
+    }
+
+    .table-wrap {
+      max-height: min(50vh, 420px);
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-color: var(--color-border-strong) transparent;
+    }
+
+    @media (max-width: 1100px) and (min-width: 768px) {
+      .model-toggle {
+        max-width: 380px;
+        overflow-x: auto;
+      }
+
+      .model-btn {
+        flex: 0 0 auto;
+        padding-inline: var(--space-3);
+      }
+
+      .scanner-workspace {
+        grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+      }
+
+      .scanner-image-panel,
+      #diagnosisCard {
+        padding: var(--space-4);
+      }
+
+      .dropzone-title {
+        font-size: var(--text-sm);
+      }
+    }
+
+    @media (max-width: 767px) {
+      html,
+      body {
+        height: auto;
+        overflow: auto;
+      }
+
+      .app-shell {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+      }
+
+      .main-workspace {
+        display: block;
+        overflow: visible;
+      }
+
+      .main-shell {
+        width: min(100% - 24px, 1280px);
+        height: auto;
+        min-height: 0;
+        padding-block: var(--space-4) var(--space-8);
+        overflow: visible;
+      }
+
+      .view,
+      .scanner-view {
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+      }
+
+      .scanner-view {
+        display: block;
+      }
+
+      .scanner-workspace {
+        display: grid;
+        grid-template-columns: 1fr;
+        flex: none;
+      }
+
+      .scanner-column {
+        overflow: visible;
+      }
+
+      .scanner-image-panel .dropzone {
+        height: auto;
+        min-height: 300px;
+      }
+
+      .diagnosis-header-actions {
+        width: 100%;
+        flex-direction: column;
+      }
+
+      .diagnosis-header-actions .confidence-box,
+      .listen-button {
+        width: 100%;
+      }
+
+      .analysis-action-row,
+      .diagnosis-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .analysis-button {
+        width: 100%;
+      }
+
+      .treatment-panel,
+      .chat-stream,
+      .table-wrap {
+        max-height: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1232,6 +1553,11 @@
             <span class="brand-subtitle">Trợ lý chẩn đoán sâu bệnh &amp; Bác sĩ cây trồng AI</span>
           </span>
         </a>
+
+        <div class="model-toggle" role="radiogroup" aria-label="Chọn mô hình AI">
+          <button id="modelFlashBtn" type="button" class="model-btn active" data-model="gemini-2.0-flash" role="radio" aria-checked="true" aria-pressed="true">&#9889; Gemini 2.0 Flash</button>
+          <button id="modelProBtn" type="button" class="model-btn" data-model="gemini-1.5-pro" role="radio" aria-checked="false" aria-pressed="false">&#129504; Gemini Pro Chuyên Sâu</button>
+        </div>
 
         <div class="toolbar" aria-label="Công cụ hệ thống">
           <button id="apiKeyBtn" type="button" class="btn btn-secondary toolbar-btn api-status" aria-haspopup="dialog">
@@ -1273,25 +1599,19 @@
       </nav>
     </header>
 
-    <main class="main-shell">
-      <section id="viewScanner" class="view space-y-6" role="tabpanel" aria-labelledby="navTabScanner">
-        <div class="section-intro">
+    <main class="main-workspace main-shell">
+      <section id="viewScanner" class="view scanner-view" role="tabpanel" aria-labelledby="navTabScanner">
+        <div class="section-intro scanner-intro">
           <div>
             <p class="eyebrow">Bàn chẩn đoán</p>
             <h1 class="view-title">Nhìn dấu bệnh, chọn bước xử lý.</h1>
             <p class="view-description">Tải ảnh lá, thân hoặc quả để nhận diện bệnh hại, xem nguyên nhân và chọn phác đồ phù hợp với canh tác VietGAP.</p>
           </div>
-          <span class="badge badge-success"><svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m4 12.5 5 5L20 6.5"></path></svg>Chế độ ngoại tuyến sẵn sàng</span>
         </div>
 
-        <div id="offlineIndicator" class="status-strip" role="status">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v10"></path><path d="M7.5 9.5a6 6 0 1 0 9 0"></path><path d="M12 19v2M8 21h8"></path></svg>
-          <p><strong>Đang dùng bộ dữ liệu ngoại tuyến.</strong> Bạn có thể thử 4 ca bệnh mẫu ngay; thêm Gemini API để phân tích ảnh mới tại ruộng.</p>
-        </div>
-
-        <div class="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-          <div class="space-y-6">
-            <section class="panel p-5 sm:p-6" aria-labelledby="scannerHeading">
+        <div class="scanner-workspace">
+          <div class="scanner-column image-column">
+            <section class="panel p-5 sm:p-6 scanner-image-panel" aria-labelledby="scannerHeading">
               <div class="panel-header">
                 <div>
                   <p class="eyebrow">Mẫu ảnh đầu vào</p>
@@ -1336,18 +1656,9 @@
                 <p id="imageReadyStatus" class="mt-3 hidden text-sm font-semibold text-primary" role="status">Ảnh đã sẵn sàng để chẩn đoán.</p>
               </div>
 
-              <div class="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                <div>
-                  <label class="field-label" for="cropSelect">Cây trồng đang theo dõi</label>
-                  <select id="cropSelect" class="field-control">
-                    <option value="rice">Lúa nước</option>
-                    <option value="durian">Sầu riêng</option>
-                    <option value="coffee">Cà phê</option>
-                    <option value="dragonfruit">Thanh long</option>
-                    <option value="general">Cây trồng khác</option>
-                  </select>
-                </div>
-                <button id="analyzeBtn" type="button" class="btn btn-primary sm:min-w-[190px]" disabled>
+              <div class="analysis-action-row">
+                <p class="analysis-note"><span class="analysis-note-mark" aria-hidden="true">AI</span> Gemini tự nhận diện cây trồng từ ảnh mẫu.</p>
+                <button id="analyzeBtn" type="button" class="btn btn-primary analysis-button" disabled>
                   <svg id="analyzeIcon" class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.3 15.3 5.2 5.2M10.5 7.5v6M7.5 10.5h6"></path></svg>
                   <span id="analyzeLabel">Phân tích ảnh</span>
                   <svg id="analyzeSpinner" class="icon-sm hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
@@ -1355,13 +1666,13 @@
               </div>
             </section>
 
-            <section class="panel p-5 sm:p-6" aria-labelledby="presetHeading">
+            <section class="panel p-5 sm:p-6 preset-panel" aria-labelledby="presetHeading">
               <div class="panel-header">
                 <div>
                   <p class="eyebrow">1-click test presets</p>
                   <h2 id="presetHeading" class="text-lg font-extrabold tracking-tight">Bốn ca bệnh quen thuộc</h2>
                 </div>
-                <span class="font-mono text-xs text-subtle">OFFLINE</span>
+                <span class="font-mono text-xs text-subtle">1-CLICK TEST</span>
               </div>
               <div class="mt-5 grid grid-cols-2 gap-2">
                 <button type="button" class="preset-btn" data-preset="rice">
@@ -1384,7 +1695,7 @@
             </section>
           </div>
 
-          <div class="space-y-6">
+          <div class="scanner-column diagnosis-column">
             <section id="loadingSpinner" class="panel hidden p-10 text-center" aria-live="polite">
               <svg class="mx-auto h-10 w-10 animate-spin text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M12 3a9 9 0 1 0 9 9"></path></svg>
               <p class="mt-4 font-bold">Đang đối chiếu triệu chứng</p>
@@ -1395,17 +1706,22 @@
               <div class="panel-header sm:flex-row">
                 <div class="min-w-0">
                   <div class="mb-3 flex flex-wrap items-center gap-2">
-                    <span id="diagnosisCrop" class="badge badge-success">Lúa nước</span>
+                    <span id="diagnosisCrop" class="badge badge-success diagnosis-crop">Lúa nước</span>
                     <span id="severityBadge" class="badge badge-alert">Mức độ: Nghiêm trọng</span>
-                    <span id="diagnosisSourceBadge" class="badge badge-warning" hidden>Mẫu thử nghiệm / Dữ liệu tham khảo</span>
                   </div>
                   <h2 id="diseaseTitle" class="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">Bệnh đạo ôn lá</h2>
                   <p id="diseaseScientific" class="mt-2 text-sm text-muted">Pyricularia oryzae</p>
                 </div>
-                <div class="confidence-box">
-                  <p class="metric-label">Độ tin cậy</p>
-                  <p id="confidenceBadge" class="metric-value">96%</p>
-                  <div class="meter-track" aria-hidden="true"><div id="confidenceMeter" class="meter-fill" style="width: 96%"></div></div>
+                <div class="diagnosis-header-actions">
+                  <div class="confidence-box">
+                    <p class="metric-label">Độ tin cậy</p>
+                    <p id="confidenceBadge" class="metric-value">96%</p>
+                    <div class="meter-track" aria-hidden="true"><div id="confidenceMeter" class="meter-fill" style="width: 96%"></div></div>
+                  </div>
+                  <button id="speakDiagnosisBtn" type="button" class="btn btn-secondary listen-button">
+                    <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 10v4h3l5 4V6l-5 4H4Z"></path><path d="M16 9a4.2 4.2 0 0 1 0 6M18.8 6.5a8 8 0 0 1 0 11"></path></svg>
+                    <span>Nghe chẩn đoán</span>
+                  </button>
                 </div>
               </div>
 
@@ -1429,11 +1745,11 @@
                   <div class="flex gap-2" role="tablist" aria-label="Loại phác đồ điều trị">
                     <button id="tabOrganicBtn" type="button" class="treatment-tab" role="tab" aria-controls="organicTreatmentPanel" aria-selected="true">
                       <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19.8 3.7c-7.1-.1-12.5 2-14.3 6.1-1.3 2.9-.1 5.7 2.7 6.6 2.8.9 5.5-.8 7.1-3.3 1.2-2 2.1-5 4.5-9.4Z"></path><path d="M4 20c2.8-4 6.1-6.8 10-8.8"></path></svg>
-                      <span>Sinh học</span>
+                      <span>Sinh học VietGAP</span>
                     </button>
                     <button id="tabChemicalBtn" type="button" class="treatment-tab" role="tab" aria-controls="chemicalTreatmentPanel" aria-selected="false">
                       <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 3h6M10 3v6.2L4.8 18a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 9.2V3M7.1 15h9.8"></path></svg>
-                      <span>Hóa học</span>
+                      <span>Hóa học đặc trị</span>
                     </button>
                   </div>
                 </div>
@@ -1479,18 +1795,14 @@
                 <p id="dosageSafetyAdvisory" class="dosage-advisory"><strong>An toàn:</strong> Đây là phép quy đổi tham khảo theo dung tích; luôn đối chiếu liều, cây trồng, thời gian cách ly và cảnh báo trên nhãn BVTV trước khi pha.</p>
               </div>
 
-              <div class="mt-5 flex flex-col gap-2 sm:flex-row">
-                <button id="speakDiagnosisBtn" type="button" class="btn btn-secondary flex-1">
-                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 10v4h3l5 4V6l-5 4H4Z"></path><path d="M16 9a4.2 4.2 0 0 1 0 6M18.8 6.5a8 8 0 0 1 0 11"></path></svg>
-                  <span>Nghe chẩn đoán</span>
-                </button>
+              <div class="diagnosis-actions">
                 <button id="saveLogbookBtn" type="button" class="btn btn-primary flex-1">
                   <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 4h12l2 2v14H5V4Z"></path><path d="M8 4v6h8V4M8 20v-6h8v6"></path></svg>
                   <span>Lưu vào nhật ký</span>
                 </button>
                 <button id="askAboutDiseaseBtn" type="button" class="btn btn-secondary flex-1">
                   <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9a2.5 2.5 0 1 1 4.1 1.9c-1.1.8-1.7 1.2-1.7 2.6M12 17h.01"></path></svg>
-                  <span>Hỏi thêm</span>
+                  <span>Hỏi AI</span>
                 </button>
               </div>
             </section>

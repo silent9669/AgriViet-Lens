@@ -64,6 +64,7 @@ export class AgriVietApp {
     this.apiKey = storage?.getItem('agriviet_gemini_api_key') || '';
     this.theme = storage?.getItem('agriviet_theme') || 'light';
     this.activeTab = 'scanner';
+    this.selectedModel = GEMINI_MODELS.FLASH;
     this.tankCapacity = 16;
     this.currentDiagnosis = null;
     this.currentImageBase64 = null;
@@ -124,6 +125,33 @@ export class AgriVietApp {
     });
   }
 
+  setSelectedModel(model) {
+    this.selectedModel = model === GEMINI_MODELS.PRO ? GEMINI_MODELS.PRO : GEMINI_MODELS.FLASH;
+
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('.model-btn').forEach(button => {
+        const isActive = button.getAttribute('data-model') === this.selectedModel;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-checked', String(isActive));
+        button.setAttribute('aria-pressed', String(isActive));
+      });
+    }
+
+    return this.selectedModel;
+  }
+
+  bindModelToggle() {
+    if (typeof document === 'undefined') return;
+
+    document.querySelectorAll('.model-btn').forEach(button => {
+      if (button.dataset.agrivietModelBound === 'true') return;
+      button.dataset.agrivietModelBound = 'true';
+      button.addEventListener('click', () => this.setSelectedModel(button.getAttribute('data-model')));
+    });
+
+    this.setSelectedModel(this.selectedModel);
+  }
+
   bindPresets() {
     if (typeof document === 'undefined') return;
 
@@ -150,9 +178,6 @@ export class AgriVietApp {
     this.currentImageMetadata = null;
 
     this.updateImagePreview(this.currentImageBase64, null);
-
-    const cropSelect = getElement('cropSelect');
-    if (cropSelect && this.selectedCrop) cropSelect.value = this.selectedCrop;
 
     const analyzeButton = getElement('analyzeBtn');
     if (analyzeButton) analyzeButton.disabled = !this.currentImageBase64;
@@ -341,7 +366,7 @@ export class AgriVietApp {
 
     try {
       const diagnosis = await GeminiService.diagnoseCropImage(this.currentImageBase64, {
-        model: GEMINI_MODELS.FLASH,
+        model: this.selectedModel,
         apiKey: this.apiKey,
         // Retain the selected crop only for the offline demo preset; Gemini
         // identifies the crop autonomously for online diagnosis.
@@ -387,18 +412,10 @@ export class AgriVietApp {
     const confidenceMeter = getElement('confidenceMeter');
     const symptoms = getElement('symptomsText');
     const causes = getElement('causesText');
-    const sourceBadge = getElement('diagnosisSourceBadge');
 
     if (cropName) cropName.textContent = data.cropName || 'Cây trồng';
     if (diseaseName) diseaseName.textContent = data.diseaseNameVi || 'Bệnh cây trồng chưa xác định';
     if (scientificName) scientificName.textContent = data.diseaseNameScientific || 'Đang cập nhật';
-    if (sourceBadge) {
-      sourceBadge.textContent = data.isOfflineFallback
-        ? (data.fallbackLabel || 'Mẫu thử nghiệm / Dữ liệu tham khảo')
-        : 'Phân tích từ Gemini API';
-      sourceBadge.className = `badge ${data.isOfflineFallback ? 'badge-warning' : 'badge-success'}`;
-      setHidden(sourceBadge, false);
-    }
 
     const confidence = Math.max(0, Math.min(100, Number(data.confidenceScore) || 0));
     if (confidenceBadge) confidenceBadge.textContent = `${confidence}%`;
@@ -635,7 +652,7 @@ export class AgriVietApp {
       } : {})
     };
     const answer = await GeminiService.askFarmingAssistant(cleanQuestion, context, {
-      model: GEMINI_MODELS.FLASH,
+      model: this.selectedModel,
       apiKey: this.apiKey
     });
 
@@ -966,6 +983,7 @@ export class AgriVietApp {
     if (typeof document === 'undefined') return;
 
     this.bindNavigation();
+    this.bindModelToggle();
     this.bindDropzoneAndUpload();
 
     const themeButton = getElement('themeToggleBtn');
@@ -990,14 +1008,6 @@ export class AgriVietApp {
       button.dataset.agrivietBound = 'true';
       button.addEventListener('click', () => this.setTankCapacity(button.getAttribute('data-capacity')));
     });
-
-    const cropSelect = getElement('cropSelect');
-    if (cropSelect && cropSelect.dataset.agrivietBound !== 'true') {
-      cropSelect.dataset.agrivietBound = 'true';
-      cropSelect.addEventListener('change', event => {
-        this.selectedCrop = event.target.value;
-      });
-    }
 
     const analyzeButton = getElement('analyzeBtn');
     if (analyzeButton && analyzeButton.dataset.agrivietBound !== 'true') {

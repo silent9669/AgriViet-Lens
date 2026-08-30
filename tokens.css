@@ -634,3 +634,162 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Single-screen workbench contract. The shell owns the viewport; only panels scroll. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-shell {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.model-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-soft);
+  box-shadow: var(--shadow-sm);
+}
+
+.model-btn {
+  min-height: 48px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* model-btn states: default, hover, focus-visible, active, disabled, loading, error, success */
+.model-btn,
+.model-btn[data-state="default"] {
+  position: relative;
+}
+
+.model-btn:hover:not(:disabled):not([data-state="loading"]):not([data-state="error"]):not([data-state="success"]),
+.model-btn[data-state="hover"] {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
+  color: var(--color-primary);
+}
+
+.model-btn:focus-visible,
+.model-btn[data-state="focus-visible"] {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.model-btn:active:not(:disabled),
+.model-btn[data-state="active"] {
+  transform: translateY(1px);
+}
+
+.model-btn:disabled,
+.model-btn[aria-disabled="true"],
+.model-btn[data-state="disabled"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
+  transform: none;
+}
+
+.model-btn[data-state="loading"] {
+  cursor: wait;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.model-btn[data-state="loading"]::before {
+  width: 1em;
+  height: 1em;
+  content: "";
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  animation: hallmark-spin 700ms linear infinite;
+}
+
+.model-btn[data-state="error"] {
+  border-color: var(--color-alert);
+  background: var(--color-alert-soft);
+  color: var(--color-status-alert-ink);
+}
+
+.model-btn[data-state="success"] {
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
+  color: var(--color-status-success-ink);
+}
+
+.model-btn.active,
+.model-btn[aria-checked="true"],
+.model-btn[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: 0 2px 0 var(--color-primary-hover);
+}
+
+/* Panels with potentially long content keep the page itself stationary. */
+.scanner-column,
+.view,
+.chat-stream,
+.treatment-panel,
+.table-wrap {
+  min-height: 0;
+  scrollbar-color: var(--color-border-strong) transparent;
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 767px) {
+  html,
+  body {
+    overflow: auto;
+  }
+
+  .app-shell {
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main-workspace {
+    display: block;
+  }
+
+  .model-toggle {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+
+  .model-btn {
+    flex: 0 0 auto;
+  }
+}
