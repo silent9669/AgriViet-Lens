@@ -907,11 +907,23 @@ export class AgriVietApp {
     return this.apiKey;
   }
 
-  updateApiKeyStatus() {
+  async updateApiKeyStatus() {
     const status = getElement('apiKeyStatus');
     const dot = getElement('apiKeyStatusDot');
-    if (status) status.textContent = this.apiKey ? 'API đã kết nối' : 'API chưa kết nối';
-    if (dot) dot.classList.toggle('is-connected', Boolean(this.apiKey));
+    let isConnected = Boolean(this.apiKey);
+    if (!isConnected && typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hasServerApiKey) isConnected = true;
+        }
+      } catch {
+        // Ignore in offline or isolated test environment
+      }
+    }
+    if (status) status.textContent = isConnected ? 'API đã kết nối' : 'API chưa kết nối';
+    if (dot) dot.classList.toggle('is-connected', isConnected);
   }
 
   openApiKeyModal() {

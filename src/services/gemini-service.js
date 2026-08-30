@@ -373,6 +373,32 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
    * clearly generic offline guideline when no crop preset is available.
    */
   static async diagnoseCropImage(base64ImageUri, cropHint = 'general', apiKey = null) {
+    // Try server-side Gemini endpoint first if running in browser context
+    if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch('/api/diagnose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: base64ImageUri,
+            cropHint,
+            clientApiKey: apiKey
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.diagnosis) {
+            return {
+              ...data.diagnosis,
+              isOfflineFallback: false
+            };
+          }
+        }
+      } catch (e) {
+        // Fall back to client-side request or offline reference
+      }
+    }
+
     if (!apiKey || !String(apiKey).trim()) {
       const reason = 'Chưa cấu hình Gemini API; đang hiển thị dữ liệu tham khảo ngoại tuyến.';
       console.warn('[GeminiService] No API key provided, using offline reference data.');
@@ -419,6 +445,29 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
    * Ask the farming assistant a text question with optional diagnosis context.
    */
   static async askFarmingAssistant(userQuestion, context = {}, apiKey = null) {
+    // Try server-side chat endpoint first if running in browser context
+    if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: userQuestion,
+            context,
+            clientApiKey: apiKey
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.answer) {
+            return data.answer;
+          }
+        }
+      } catch (e) {
+        // Fall back
+      }
+    }
+
     if (!apiKey || !String(apiKey).trim()) {
       return offlineAssistantAnswer(userQuestion);
     }

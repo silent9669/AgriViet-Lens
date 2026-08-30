@@ -1,0 +1,11 @@
+{
+  "name": "AgriViet Lens",
+  "description": "AI-Powered Crop Pathology Diagnostic & Field Advisory Platform for Google AI Riser Vietnam 2026",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
