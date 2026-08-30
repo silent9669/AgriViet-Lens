@@ -1,4 +1,4 @@
-import { getOfflineDiagnosis } from '../data/offline-diseases.js';
+import { SAMPLE_PRESETS, getPresetDiagnosis } from '../data/sample-presets.js';
 
 export const GEMINI_CONFIG = {
   MODEL: 'gemini-2.0-flash',
@@ -13,64 +13,139 @@ export const CROP_LABELS = {
   general: 'Cây Trồng Chung (General Crop)'
 };
 
+const DEFAULT_ORGANIC_TREATMENT = {
+  title: 'Phác đồ Sinh học VietGAP',
+  steps: ['Cắt tỉa và tiêu hủy phần bệnh', 'Ưu tiên chế phẩm sinh học theo hướng dẫn nhãn.'],
+  bioProducts: 'Trichoderma spp. và Bacillus spp.'
+};
+
+const DEFAULT_CHEMICAL_TREATMENT = {
+  title: 'Phác đồ Hóa học',
+  activeIngredients: 'Hoạt chất được đăng ký cho cây trồng và bệnh tương ứng',
+  dosageInstructions: 'Pha theo hướng dẫn trên nhãn sản phẩm',
+  quarantineDays: 14,
+  safetyNotes: 'Mang đầy đủ bảo hộ lao động và tuân thủ thời gian cách ly trên nhãn.'
+};
+
+const DEFAULT_DIAGNOSIS = {
+  cropName: 'Cây Trồng',
+  diseaseNameVi: 'Bệnh Cây Trồng Chưa Xác Định',
+  diseaseNameScientific: 'Đang cập nhật',
+  confidenceScore: 90,
+  severityLevel: 'Trung bình',
+  symptomsSummary: 'Quan sát thấy dấu hiệu bất thường trên mô thực vật.',
+  primaryCauses: 'Cần kiểm tra thêm điều kiện thời tiết, dinh dưỡng và tác nhân gây bệnh.',
+  organicTreatment: DEFAULT_ORGANIC_TREATMENT,
+  chemicalTreatment: DEFAULT_CHEMICAL_TREATMENT,
+  seasonalPrevention: ['Vệ sinh đồng ruộng sau thu hoạch.', 'Bón phân cân đối và giữ tán cây thông thoáng.']
+};
+
+function isRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function textOrFallback(value, fallback) {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function numberOrFallback(value, fallback, { min = -Infinity, max = Infinity } = {}) {
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(number) && number >= min && number <= max ? number : fallback;
+}
+
+function stringListOrFallback(value, fallback) {
+  if (!Array.isArray(value)) return [...fallback];
+  const values = value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim());
+  return values.length ? values : [...fallback];
+}
+
+function cloneDiagnosis(preset, extra = {}) {
+  return {
+    ...preset,
+    organicTreatment: {
+      ...(preset.organicTreatment || {}),
+      steps: [...(preset.organicTreatment?.steps || [])]
+    },
+    chemicalTreatment: { ...(preset.chemicalTreatment || {}) },
+    seasonalPrevention: [...(preset.seasonalPrevention || [])],
+    ...extra
+  };
+}
+
+function getPresetFallback(cropHint, fallbackReason) {
+  const preset = getPresetDiagnosis(cropHint) || SAMPLE_PRESETS[0];
+  if (!preset) {
+    return {
+      ...DEFAULT_DIAGNOSIS,
+      organicTreatment: { ...DEFAULT_ORGANIC_TREATMENT, steps: [...DEFAULT_ORGANIC_TREATMENT.steps] },
+      chemicalTreatment: { ...DEFAULT_CHEMICAL_TREATMENT },
+      seasonalPrevention: [...DEFAULT_DIAGNOSIS.seasonalPrevention],
+      cropKey: cropHint || 'general',
+      isOfflineFallback: true,
+      ...(fallbackReason ? { fallbackReason, apiError: fallbackReason } : {})
+    };
+  }
+
+  return cloneDiagnosis(preset, {
+    isOfflineFallback: true,
+    ...(fallbackReason ? { fallbackReason, apiError: fallbackReason } : {})
+  });
+}
+
+function apiUrl(apiKey) {
+  return `${GEMINI_CONFIG.API_BASE_URL}/${GEMINI_CONFIG.MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+}
+
+function offlineAssistantAnswer(userQuestion) {
+  const question = String(userQuestion ?? '');
+  const q = question.toLowerCase();
+
+  if (q.includes('đạo ôn') || q.includes('lúa')) {
+    return 'Đối với bệnh đạo ôn trên lúa, bà con cần ngưng ngay việc bón thừa đạm (ure), giữ mực nước ruộng từ 3-5cm. Phun trừ bằng các hoạt chất đặc trị như Tricyclazole (Beam, Flash) hoặc Isoprothiolane vào lúc sáng sớm khi ráo sương.';
+  }
+  if (q.includes('sầu riêng') || q.includes('xì mủ') || q.includes('thối rễ')) {
+    return 'Bệnh xì mủ nứt thân sầu riêng do nấm Phytophthora gây ra. Bà con cạo sạch vết bệnh đến phần vỏ gỗ tươi, quét thuốc Metalaxyl hoặc Fosetyl-Aluminium đặc. Đồng thời tạo rãnh thoát nước vườn thật tốt trong mùa mưa.';
+  }
+  if (q.includes('cà phê') || q.includes('rỉ sắt')) {
+    return 'Bệnh rỉ sắt cà phê xuất hiện nhiều vào mùa mưa ẩm. Bà con nên tỉa cành thông thoáng, phun luân phiên hoạt chất Hexaconazole (Anvil) hoặc Difenoconazole, tập trung vào mặt dưới của lá.';
+  }
+  if (q.includes('thanh long') || q.includes('đốm nâu') || q.includes('mắt cua')) {
+    return 'Bệnh đốm nâu mắt cua trên thanh long cần cắt tỉa cành bệnh tiêu hủy, giữ rãnh thoát nước thông thoáng và phun luân phiên hoạt chất Azoxystrobin hoặc Difenoconazole theo nhãn đăng ký.';
+  }
+  return `Chào bà con! Trợ lý AgriViet Lens luôn sẵn sàng tư vấn kỹ thuật phòng trừ sâu bệnh, canh tác VietGAP và dinh dưỡng cây trồng. Với câu hỏi "${question}", bà con nên chú ý quản lý nguồn nước, cắt tỉa thông thoáng và bón phân cân đối Đạm - Lân - Kali.`;
+}
+
 export class GeminiService {
   /**
-   * Formats the multimodal vision payload for Gemini 2.0/1.5 Flash
+   * Format an image and an agronomy instruction for Gemini's multimodal API.
    */
   static formatVisionPayload(base64ImageUri, cropHint = 'general') {
     const cropText = CROP_LABELS[cropHint] || 'Cây trồng nhiệt đới Việt Nam';
-
-    // Parse mime type and raw base64 data
+    const imageUri = String(base64ImageUri ?? '');
     let mimeType = 'image/jpeg';
-    let rawBase64 = base64ImageUri;
+    let rawBase64 = imageUri;
+    const dataUriMatch = imageUri.match(/^data:([^;]+);base64,([\s\S]+)$/i);
 
-    if (base64ImageUri.startsWith('data:')) {
-      const match = base64ImageUri.match(/^data:([^;]+);base64,(.+)$/);
-      if (match) {
-        mimeType = match[1];
-        rawBase64 = match[2];
-      }
+    if (dataUriMatch) {
+      mimeType = dataUriMatch[1];
+      rawBase64 = dataUriMatch[2];
     }
 
-    const systemPrompt = `Bạn là Chuyên Gia Nông Nghiệp & Bác Sĩ Cây Trồng cao cấp tại Việt Nam với hơn 20 năm kinh nghiệm bệnh lý thực vật nhiệt đới.
-Cây trồng mục tiêu: ${cropText}.
+    const systemPrompt = `Bạn là Chuyên Gia Nông Nghiệp và Bác Sĩ Cây Trồng cao cấp tại Việt Nam, am hiểu bệnh lý thực vật nhiệt đới và quy trình VietGAP.
 
-Nhiệm vụ:
-Phân tích kỹ lưỡng hình ảnh lá/thân/trái của cây trồng, chẩn đoán chính xác tên bệnh, tác nhân gây bệnh, mức độ và cung cấp phác đồ điều trị chi tiết theo chuẩn VietGAP.
+Hãy phân tích kỹ hình ảnh lá, thân hoặc trái; phân biệt bệnh với sâu hại, thiếu dinh dưỡng và tổn thương cơ giới. Chỉ đưa ra chẩn đoán khi có dấu hiệu phù hợp, nêu rõ mức độ tin cậy và ưu tiên biện pháp an toàn, khả thi tại ruộng Việt Nam.
 
-BẮT BUỘC trả về duy nhất chuỗi JSON thuần túy (không thêm lời dẫn) theo schema sau:
-{
-  "cropName": "Tên cây trồng tại Việt Nam",
-  "diseaseNameVi": "Tên tiếng Việt chính xác của bệnh",
-  "diseaseNameScientific": "Tên khoa học của mầm bệnh (Latin)",
-  "confidenceScore": 95,
-  "severityLevel": "Nhẹ" | "Trung bình" | "Nghiêm trọng",
-  "symptomsSummary": "Mô tả triệu chứng phát hiện trên ảnh",
-  "primaryCauses": "Nguyên nhân (nấm, vi khuẩn, virus, thiếu dinh dưỡng...)",
-  "organicTreatment": {
-    "title": "Phác đồ Sinh học / Hữu cơ VietGAP",
-    "steps": ["Bước 1...", "Bước 2..."],
-    "bioProducts": "Chế phẩm sinh học đề xuất"
-  },
-  "chemicalTreatment": {
-    "title": "Phác đồ Hóa học Đặc trị",
-    "activeIngredients": "Hoạt chất đặc trị khuyên dùng",
-    "dosageInstructions": "Liều lượng pha bình 16L hoặc 25L nước",
-    "quarantineDays": 14,
-    "safetyNotes": "Khuyến cáo an toàn lao động và bảo vệ nguồn nước"
-  },
-  "seasonalPrevention": [
-    "Biện pháp phòng ngừa 1...",
-    "Biện pháp phòng ngừa 2..."
-  ]
-}`;
+BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không markdown, không lời dẫn. JSON phải có đủ các trường: cropName, diseaseNameVi, diseaseNameScientific, confidenceScore (number từ 0 đến 100), severityLevel, symptomsSummary, primaryCauses, organicTreatment (title, steps là mảng chuỗi, bioProducts), chemicalTreatment (title, activeIngredients, dosageInstructions, quarantineDays là number, safetyNotes), seasonalPrevention (mảng chuỗi). Thời gian cách ly phải tính theo ngày và không được bỏ trống.`;
 
     return {
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
       contents: [
         {
           role: 'user',
           parts: [
-            { text: systemPrompt },
+            { text: `Cây trồng mục tiêu: ${cropText}. Hãy chẩn đoán hình ảnh này theo schema JSON bắt buộc.` },
             {
               inline_data: {
                 mime_type: mimeType,
@@ -82,129 +157,134 @@ BẮT BUỘC trả về duy nhất chuỗi JSON thuần túy (không thêm lời
       ],
       generationConfig: {
         response_mime_type: 'application/json',
-        temperature: 0.2,
+        temperature: 0.15,
         topP: 0.95
       }
     };
   }
 
   /**
-   * Safely parses JSON response from Gemini, extracting from Markdown if needed
+   * Parse Gemini text, tolerating a markdown fence or a short prose prefix.
    */
   static parseDiagnosisResponse(rawText) {
-    if (!rawText) {
+    if (typeof rawText !== 'string' || !rawText.trim()) {
       throw new Error('Empty response from Gemini API');
     }
 
-    let cleaned = rawText.trim();
-    // Remove markdown code fence if present
-    if (cleaned.startsWith('```json')) {
-      cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    } else if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
+    const cleaned = rawText
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim();
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+
+    if (start === -1 || end < start) {
+      throw new Error('Gemini response did not contain a JSON object');
     }
 
-    const data = JSON.parse(cleaned);
+    let data;
+    try {
+      data = JSON.parse(cleaned.slice(start, end + 1));
+    } catch (error) {
+      throw new Error(`Invalid JSON from Gemini API: ${error.message}`);
+    }
 
-    // Ensure default fallbacks for nested structures
+    if (!isRecord(data)) {
+      throw new Error('Gemini response JSON must be an object');
+    }
+
+    const organic = isRecord(data.organicTreatment) ? data.organicTreatment : {};
+    const chemical = isRecord(data.chemicalTreatment) ? data.chemicalTreatment : {};
+
     return {
-      cropName: data.cropName || 'Cây Trồng',
-      diseaseNameVi: data.diseaseNameVi || 'Bệnh Cây Trồng Chưa Xác Định',
-      diseaseNameScientific: data.diseaseNameScientific || 'Đang cập nhật',
-      confidenceScore: typeof data.confidenceScore === 'number' ? data.confidenceScore : 90,
-      severityLevel: data.severityLevel || 'Trung bình',
-      symptomsSummary: data.symptomsSummary || 'Quan sát thấy vết đổi màu và đốm bệnh trên mô thực vật.',
-      primaryCauses: data.primaryCauses || 'Điều kiện thời tiết ẩm ướt và mầm bệnh trong môi trường canh tác.',
-      organicTreatment: data.organicTreatment || {
-        title: 'Phác đồ Sinh học VietGAP',
-        steps: ['Cắt tỉa lá bệnh tiêu hủy', 'Phun chế phẩm sinh học đối kháng Trichoderma / Bacillus.'],
-        bioProducts: 'Trichoderma spp., Nano Bạc Bạc sinh học'
+      cropName: textOrFallback(data.cropName, DEFAULT_DIAGNOSIS.cropName),
+      diseaseNameVi: textOrFallback(data.diseaseNameVi, DEFAULT_DIAGNOSIS.diseaseNameVi),
+      diseaseNameScientific: textOrFallback(data.diseaseNameScientific, DEFAULT_DIAGNOSIS.diseaseNameScientific),
+      confidenceScore: numberOrFallback(data.confidenceScore, DEFAULT_DIAGNOSIS.confidenceScore, { min: 0, max: 100 }),
+      severityLevel: textOrFallback(data.severityLevel, DEFAULT_DIAGNOSIS.severityLevel),
+      symptomsSummary: textOrFallback(data.symptomsSummary, DEFAULT_DIAGNOSIS.symptomsSummary),
+      primaryCauses: textOrFallback(data.primaryCauses, DEFAULT_DIAGNOSIS.primaryCauses),
+      organicTreatment: {
+        title: textOrFallback(organic.title, DEFAULT_ORGANIC_TREATMENT.title),
+        steps: stringListOrFallback(organic.steps, DEFAULT_ORGANIC_TREATMENT.steps),
+        bioProducts: textOrFallback(organic.bioProducts, DEFAULT_ORGANIC_TREATMENT.bioProducts)
       },
-      chemicalTreatment: data.chemicalTreatment || {
-        title: 'Phác đồ Hóa học',
-        activeIngredients: 'Hoạt chất trừ nấm/khuẩn phổ rộng',
-        dosageInstructions: 'Pha theo hướng dẫn bao bì nhà sản xuất',
-        quarantineDays: 14,
-        safetyNotes: 'Bảo hộ lao động đầy đủ khi phun xịt.'
+      chemicalTreatment: {
+        title: textOrFallback(chemical.title, DEFAULT_CHEMICAL_TREATMENT.title),
+        activeIngredients: textOrFallback(chemical.activeIngredients, DEFAULT_CHEMICAL_TREATMENT.activeIngredients),
+        dosageInstructions: textOrFallback(chemical.dosageInstructions, DEFAULT_CHEMICAL_TREATMENT.dosageInstructions),
+        quarantineDays: numberOrFallback(chemical.quarantineDays, DEFAULT_CHEMICAL_TREATMENT.quarantineDays, { min: 0 }),
+        safetyNotes: textOrFallback(chemical.safetyNotes, DEFAULT_CHEMICAL_TREATMENT.safetyNotes)
       },
-      seasonalPrevention: Array.isArray(data.seasonalPrevention) ? data.seasonalPrevention : [
-        'Vệ sinh đồng ruộng sau thu hoạch.',
-        'Bón phân cân đối, tránh thừa đạm.'
-      ]
+      seasonalPrevention: stringListOrFallback(data.seasonalPrevention, DEFAULT_DIAGNOSIS.seasonalPrevention)
     };
   }
 
   /**
-   * Performs crop image diagnosis via Gemini API with offline fallback
+   * Diagnose a crop image with Gemini, falling back to the matching sample preset.
    */
   static async diagnoseCropImage(base64ImageUri, cropHint = 'general', apiKey = null) {
-    if (!apiKey) {
-      console.warn('[GeminiService] No API key provided, utilizing High-Fidelity Offline Knowledge Base.');
-      return getOfflineDiagnosis(cropHint, cropHint);
+    if (!apiKey || !String(apiKey).trim()) {
+      console.warn('[GeminiService] No API key provided, using high-fidelity sample preset.');
+      return getPresetFallback(cropHint);
     }
 
     try {
       const payload = this.formatVisionPayload(base64ImageUri, cropHint);
-      const url = `${GEMINI_CONFIG.API_BASE_URL}/${GEMINI_CONFIG.MODEL}:generateContent?key=${apiKey}`;
-
-      const response = await fetch(url, {
+      const response = await fetch(apiUrl(String(apiKey).trim()), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('[GeminiService] API Error:', response.status, errorBody);
-        throw new Error(`Gemini API returned status ${response.status}: ${errorBody}`);
+        let errorBody = '';
+        try {
+          errorBody = await response.text();
+        } catch {
+          // Preserve the HTTP status when a platform response has no text body.
+        }
+        throw new Error(`Gemini API returned status ${response.status}${errorBody ? `: ${errorBody}` : ''}`);
       }
 
       const result = await response.json();
-      const textContent = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const textContent = result?.candidates?.[0]?.content?.parts?.find(part => typeof part.text === 'string')?.text;
       if (!textContent) {
         throw new Error('No candidate text received from Gemini');
       }
 
-      const parsed = this.parseDiagnosisResponse(textContent);
-      parsed.isOfflineFallback = false;
-      return parsed;
-    } catch (err) {
-      console.warn('[GeminiService] Falling back to offline database due to:', err.message);
-      const fallback = getOfflineDiagnosis(cropHint, cropHint);
-      fallback.fallbackReason = err.message;
-      return fallback;
+      return {
+        ...this.parseDiagnosisResponse(textContent),
+        isOfflineFallback: false
+      };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.warn('[GeminiService] Falling back to sample preset:', reason);
+      return getPresetFallback(cropHint, reason);
     }
   }
 
   /**
-   * Conversational Agricultural Field Copilot (Voice/Text Q&A)
+   * Ask the farming assistant a text question with optional diagnosis context.
    */
   static async askFarmingAssistant(userQuestion, context = {}, apiKey = null) {
-    if (!apiKey) {
-      // High quality offline conversational knowledge responses
-      const q = userQuestion.toLowerCase();
-      if (q.includes('đạo ôn') || q.includes('lúa')) {
-        return 'Đối với bệnh đạo ôn trên lúa, bà con cần ngưng ngay việc bón thừa đạm (ure), giữ mực nước ruộng từ 3-5cm. Phun trừ bằng các hoạt chất đặc trị như Tricyclazole (Beam, Flash) hoặc Isoprothiolane vào lúc sáng sớm khi ráo sương.';
-      }
-      if (q.includes('sầu riêng') || q.includes('xì mủ') || q.includes('thối rễ')) {
-        return 'Bệnh xì mủ nứt thân sầu riêng do nấm Phytophthora gây ra. Bà con cạo sạch vết bệnh đến phần vỏ gỗ tươi, quét thuốc Metalaxyl hoặc Fosetyl-Aluminium đặc. Đồng thời tạo rãnh thoát nước vườn thật tốt trong mùa mưa.';
-      }
-      if (q.includes('cà phê') || q.includes('rỉ sắt')) {
-        return 'Bệnh rỉ sắt cà phê xuất hiện nhiều vào mùa mưa ẩm. Bà con nên tỉa cành thông thoáng, phun luân phiên hoạt chất Hexaconazole (Anvil) hoặc Difenoconazole, tập trung vào mặt dưới của lá.';
-      }
-      return `Chào bà con! Trợ lý AgriViet Lens luôn sẵn sàng tư vấn kỹ thuật phòng trừ sâu bệnh, canh tác VietGAP và dinh dưỡng cây trồng. Với câu hỏi "${userQuestion}", bà con nên chú ý quản lý nguồn nước, cắt tỉa thông thoáng và bón phân cân đối Đạm - Lân - Kali.`;
+    if (!apiKey || !String(apiKey).trim()) {
+      return offlineAssistantAnswer(userQuestion);
     }
 
     try {
-      const systemInstruction = `Bạn là Bác Sĩ Cây Trồng và Kỹ Sư Nông Nghiệp Việt Nam thân thiện, am hiểu sâu sắc thực tế ruộng đồng Việt Nam. Hãy trả lời ngắn gọn, súc tích (3-4 câu), dễ hiểu, thực tế, ưu tiên giải pháp sinh học VietGAP an toàn và hiệu quả cao.`;
-
+      const systemInstruction = 'Bạn là Bác Sĩ Cây Trồng và Kỹ Sư Nông Nghiệp Việt Nam thân thiện, am hiểu thực tế ruộng đồng. Trả lời bằng tiếng Việt, ngắn gọn 3-4 câu, dễ hiểu, thực tế, ưu tiên giải pháp sinh học VietGAP an toàn và nêu cảnh báo nhãn thuốc khi cần.';
       const payload = {
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        },
         contents: [
           {
             role: 'user',
-            parts: [
-              { text: `${systemInstruction}\n\nNgữ cảnh chẩn đoán gần nhất: ${JSON.stringify(context)}\n\nCâu hỏi của nông dân: ${userQuestion}` }
-            ]
+            parts: [{
+              text: `Ngữ cảnh chẩn đoán gần nhất: ${JSON.stringify(context)}\n\nCâu hỏi của nông dân: ${String(userQuestion ?? '')}`
+            }]
           }
         ],
         generationConfig: {
@@ -213,8 +293,7 @@ BẮT BUỘC trả về duy nhất chuỗi JSON thuần túy (không thêm lời
         }
       };
 
-      const url = `${GEMINI_CONFIG.API_BASE_URL}/${GEMINI_CONFIG.MODEL}:generateContent?key=${apiKey}`;
-      const response = await fetch(url, {
+      const response = await fetch(apiUrl(String(apiKey).trim()), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -225,15 +304,16 @@ BẮT BUỘC trả về duy nhất chuỗi JSON thuần túy (không thêm lời
       }
 
       const result = await response.json();
-      return result?.candidates?.[0]?.content?.parts?.[0]?.text || 'Không nhận được câu trả lời từ máy chủ.';
-    } catch (err) {
-      console.warn('[GeminiService] Chat fallback:', err.message);
-      return `[Chế độ Ngoại tuyến] Chào bà con! Với câu hỏi "${userQuestion}", khuyến cáo bà con kiểm tra độ ẩm vườn, dọn dẹp tàn dư nấm bệnh và sử dụng thuốc bảo vệ thực vật sinh học theo danh mục được phép lưu hành tại Việt Nam.`;
+      return result?.candidates?.[0]?.content?.parts?.find(part => typeof part.text === 'string')?.text
+        || 'Không nhận được câu trả lời từ máy chủ.';
+    } catch (error) {
+      console.warn('[GeminiService] Chat fallback:', error instanceof Error ? error.message : String(error));
+      return `[Chế độ Ngoại tuyến] ${offlineAssistantAnswer(userQuestion)}`;
     }
   }
 
   /**
-   * Resizes an image file/canvas to maximum dimension to speed up transmission
+   * Resizes an image file/canvas to maximum dimension to speed up transmission.
    */
   static resizeImageToMax(imageElement, maxDim = 800) {
     if (typeof document === 'undefined') return '';
