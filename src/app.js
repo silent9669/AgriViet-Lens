@@ -1,18 +1,31 @@
 /**
  * AgriViet Lens - Main Application Controller
- * Orchestrates Vision Pathology, Tactile Dosage Calculator, Voice Assistant, Weather Radar, and Farm Logbook.
+ * Orchestrates image diagnosis, treatment dosage, voice assistance, weather risk,
+ * and the local VietGAP logbook.
  */
 
-import { SAMPLE_PRESETS } from './data/offline-diseases.js';
+import { SAMPLE_PRESETS } from './data/sample-presets.js';
 import { GeminiService } from './services/gemini-service.js';
 import { WeatherRadarService, VIETNAM_REGIONS } from './services/weather-radar.js';
 import { LogbookService } from './services/logbook-service.js';
 import { ImageProcessor } from './utils/image-processor.js';
 import { DosageCalculator } from './utils/dosage-calculator.js';
+import { renderIcon } from './utils/icons.js';
 
-function escapeHTML(str) {
-  if (!str) return '';
-  return String(str)
+const NAVIGATION_TABS = ['scanner', 'voice', 'weather', 'logbook'];
+const VIEW_IDS = {
+  scanner: 'viewScanner',
+  voice: 'viewVoice',
+  weather: 'viewWeather',
+  logbook: 'viewLogbook'
+};
+
+function getStorage() {
+  return typeof globalThis.localStorage !== 'undefined' ? globalThis.localStorage : null;
+}
+
+function escapeHTML(value) {
+  return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -20,181 +33,277 @@ function escapeHTML(str) {
     .replace(/'/g, '&#039;');
 }
 
-class AgriVietApp {
+function setHidden(element, hidden) {
+  if (!element) return;
+  element.hidden = hidden;
+  element.classList?.toggle('hidden', hidden);
+}
+
+function getElement(id) {
+  return typeof document !== 'undefined' ? document.getElementById(id) : null;
+}
+
+export class AgriVietApp {
   constructor() {
-    this.apiKey = localStorage.getItem('agriviet_gemini_api_key') || '';
-    this.theme = localStorage.getItem('agriviet_theme') || 'light';
-    this.selectedCrop = 'rice';
-    this.currentImageBase64 = null;
+    const storage = getStorage();
+
+    this.apiKey = storage?.getItem('agriviet_gemini_api_key') || '';
+    this.theme = storage?.getItem('agriviet_theme') || 'light';
+    this.activeTab = 'scanner';
+    this.tankCapacity = 16;
     this.currentDiagnosis = null;
-    this.currentDosageInstruction = '';
+    this.currentImageBase64 = null;
     this.isRecording = false;
+
+    this.selectedCrop = 'rice';
+    this.treatmentTab = 'organic';
+    this.currentDosageInstruction = '';
     this.recognition = null;
     this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
-    this.activeTab = 'scanner'; // 'scanner' | 'voice' | 'weather' | 'logbook'
-    this.treatmentTab = 'organic'; // 'organic' | 'chemical'
-    this.tankCapacity = 16; // 16L | 25L | 200L
+    this._toastTimer = null;
   }
 
   init() {
-    console.log('[AgriVietApp] Initializing AgriViet Lens 2026...');
-    this.applyTheme(this.theme);
-    this.setupSpeechRecognition();
+    this.applyTheme();
+    this.setupSpeech();
     this.bindPresets();
     this.bindEvents();
     this.loadWeather();
     this.renderLogbook();
 
-    // Auto load first sample preset for immediate evaluation
-    this.loadPreset(SAMPLE_PRESETS[0]);
-  }
-
-  saveApiKey(key) {
-    this.apiKey = key.trim();
-    if (this.apiKey) {
-      localStorage.setItem('agriviet_gemini_api_key', this.apiKey);
-      this.showToast('Đã kích hoạt Google Gemini API thành công!', 'success');
-    } else {
-      localStorage.removeItem('agriviet_gemini_api_key');
-      this.showToast('Đã kích hoạt Bộ Cơ Sở Dữ Liệu Ngoại Tuyến!', 'info');
+    if (SAMPLE_PRESETS[0]) {
+      this.loadPreset(SAMPLE_PRESETS[0]);
     }
   }
 
-  setupSpeechRecognition() {
-    const SpeechRec = window['SpeechRecognition'] || window['webkitSpeechRecognition'];
-    if (SpeechRec) {
-      this.recognition = new SpeechRec();
-      this.recognition.lang = 'vi-VN';
-      this.recognition.continuous = false;
-      this.recognition.interimResults = false;
+  /**
+   * Bind the top-level workbench navigation to the four main views.
+   */
+  bindNavigation() {
+    if (typeof document === 'undefined') return;
 
-      this.recognition.onstart = () => {
-        this.isRecording = true;
-        this.updateMicUI(true);
-      };
+    document.querySelectorAll('[data-tab]').forEach(tab => {
+      if (tab.dataset.agrivietNavigationBound === 'true') return;
+      tab.dataset.agrivietNavigationBound = 'true';
+      tab.addEventListener('click', () => this.switchNavTab(tab.getAttribute('data-tab')));
+    });
 
-      this.recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        const voiceQuestionInput = document.getElementById('voiceQuestionInput');
-        if (voiceQuestionInput) voiceQuestionInput.value = transcript;
-        this.submitVoiceQuery(transcript);
-      };
-
-      this.recognition.onerror = (event) => {
-        console.warn('[Speech] Recognition error:', event.error);
-        this.isRecording = false;
-        this.updateMicUI(false);
-        this.showToast('Nhận diện giọng nói: ' + event.error, 'error');
-      };
-
-      this.recognition.onend = () => {
-        this.isRecording = false;
-        this.updateMicUI(false);
-      };
-    }
+    this.switchNavTab(this.activeTab);
   }
 
-  toggleRecording() {
-    if (!this.recognition) {
-      this.showToast('Trình duyệt không hỗ trợ Web Speech trực tiếp. Vui lòng nhập câu hỏi bằng bàn phím.', 'warning');
-      return;
-    }
+  switchNavTab(tabName) {
+    const nextTab = NAVIGATION_TABS.includes(tabName) ? tabName : 'scanner';
+    this.activeTab = nextTab;
 
-    if (this.isRecording) {
-      this.recognition.stop();
-    } else {
-      try {
-        this.recognition.start();
-      } catch (e) {
-        console.error('[Speech] Start failed:', e);
-      }
-    }
-  }
+    if (typeof document === 'undefined') return;
 
-  updateMicUI(recording) {
-    const btn = document.getElementById('voiceRecordBtn');
-    const wave = document.getElementById('voiceWaveform');
-    if (!btn) return;
+    document.querySelectorAll('[data-tab]').forEach(tab => {
+      const isActive = tab.getAttribute('data-tab') === nextTab;
+      tab.classList.toggle('active', isActive);
+      tab.setAttribute('aria-selected', String(isActive));
+    });
 
-    if (recording) {
-      btn.classList.add('bg-rose-600', 'animate-pulse', 'ring-4', 'ring-rose-400/40');
-      btn.classList.remove('bg-emerald-600');
-      if (wave) wave.classList.remove('hidden');
-    } else {
-      btn.classList.remove('bg-rose-600', 'animate-pulse', 'ring-4', 'ring-rose-400/40');
-      btn.classList.add('bg-emerald-600');
-      if (wave) wave.classList.add('hidden');
-    }
-  }
-
-  speakText(text) {
-    if (!this.synth) return;
-    this.synth.cancel();
-
-    const cleanText = text.replace(/[*#_`]/g, '').trim();
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'vi-VN';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-
-    const voices = this.synth.getVoices();
-    const viVoice = voices.find(v => v.lang.includes('vi') || v.lang.includes('VI'));
-    if (viVoice) utterance.voice = viVoice;
-
-    this.synth.speak(utterance);
+    Object.entries(VIEW_IDS).forEach(([name, id]) => {
+      setHidden(getElement(id), name !== nextTab);
+    });
   }
 
   bindPresets() {
-    document.querySelectorAll('.preset-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const presetKey = btn.getAttribute('data-preset');
-        const preset = SAMPLE_PRESETS.find(p => {
-          const cropKey = p.crop || p.cropKey || '';
-          return cropKey.toLowerCase().includes((presetKey || '').toLowerCase()) || p.id === presetKey;
-        });
+    if (typeof document === 'undefined') return;
+
+    document.querySelectorAll('.preset-btn').forEach(button => {
+      if (button.dataset.agrivietPresetBound === 'true') return;
+      button.dataset.agrivietPresetBound = 'true';
+      button.addEventListener('click', () => {
+        const presetKey = button.getAttribute('data-preset') || '';
+        const preset = SAMPLE_PRESETS.find(candidate => (
+          candidate.id === presetKey ||
+          candidate.cropKey === presetKey ||
+          candidate.crop === presetKey
+        ));
         if (preset) this.loadPreset(preset);
       });
     });
   }
 
   loadPreset(preset) {
-    this.selectedCrop = preset.cropKey;
-    this.currentImageBase64 = preset.sampleImageBase64;
+    if (!preset) return;
 
-    const preview = document.getElementById('imagePreview');
-    const prompt = document.getElementById('uploadPrompt');
-    const container = document.getElementById('previewContainer');
+    this.selectedCrop = preset.cropKey || preset.crop || 'general';
+    this.currentImageBase64 = preset.sampleImageBase64 || null;
 
-    if (preview && prompt && container) {
-      preview.src = preset.sampleImageBase64;
-      preview.classList.remove('hidden');
-      prompt.classList.add('hidden');
-      container.classList.remove('hidden');
-    }
+    this.updateImagePreview(this.currentImageBase64);
 
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    if (analyzeBtn) analyzeBtn.disabled = false;
+    const cropSelect = getElement('cropSelect');
+    if (cropSelect && this.selectedCrop) cropSelect.value = this.selectedCrop;
 
-    // Sync crop selector
-    const cropSelect = document.getElementById('cropSelect');
-    if (cropSelect) cropSelect.value = preset.cropKey;
+    const analyzeButton = getElement('analyzeBtn');
+    if (analyzeButton) analyzeButton.disabled = !this.currentImageBase64;
 
-    this.runDiagnosis();
+    // Presets are deliberately analyzed immediately so the offline workbench
+    // has a useful diagnosis on first load.
+    void this.runAnalysis();
   }
 
-  async runDiagnosis() {
-    if (!this.currentImageBase64) {
-      this.showToast('Vui lòng chọn hoặc chụp ảnh lá cây cần chẩn đoán!', 'warning');
+  bindDropzoneAndUpload() {
+    if (typeof document === 'undefined') return;
+
+    const dropzone = getElement('dropzone');
+    const fileInput = getElement('fileInput');
+    const cameraInput = getElement('cameraInput');
+    const cameraButton = getElement('cameraBtn');
+    const uploadButton = getElement('uploadBtn');
+    const clearButton = getElement('clearImageBtn');
+
+    if (fileInput && fileInput.dataset.agrivietUploadBound !== 'true') {
+      fileInput.dataset.agrivietUploadBound = 'true';
+      fileInput.addEventListener('change', event => {
+        const file = event.target.files?.[0];
+        if (file) void this.handleFileSelected(file);
+        event.target.value = '';
+      });
+    }
+
+    if (cameraInput && cameraInput.dataset.agrivietUploadBound !== 'true') {
+      cameraInput.dataset.agrivietUploadBound = 'true';
+      cameraInput.addEventListener('change', event => {
+        const file = event.target.files?.[0];
+        if (file) void this.handleFileSelected(file);
+        event.target.value = '';
+      });
+    }
+
+    if (cameraButton && cameraInput && cameraButton.dataset.agrivietUploadBound !== 'true') {
+      cameraButton.dataset.agrivietUploadBound = 'true';
+      cameraButton.addEventListener('click', () => cameraInput.click());
+    }
+
+    if (uploadButton && fileInput && uploadButton.dataset.agrivietUploadBound !== 'true') {
+      uploadButton.dataset.agrivietUploadBound = 'true';
+      uploadButton.addEventListener('click', () => fileInput.click());
+    }
+
+    if (dropzone && dropzone.dataset.agrivietDropzoneBound !== 'true') {
+      dropzone.dataset.agrivietDropzoneBound = 'true';
+      dropzone.addEventListener('dragover', event => {
+        event.preventDefault();
+        dropzone.classList.add('drag-active');
+      });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-active'));
+      dropzone.addEventListener('drop', event => {
+        event.preventDefault();
+        dropzone.classList.remove('drag-active');
+        const file = event.dataTransfer?.files?.[0];
+        if (file) void this.handleFileSelected(file);
+      });
+      dropzone.addEventListener('click', event => {
+        if (event.target.closest('button') || event.target.closest('input')) return;
+        fileInput?.click();
+      });
+      dropzone.addEventListener('keydown', event => {
+        if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('button')) {
+          event.preventDefault();
+          fileInput?.click();
+        }
+      });
+    }
+
+    if (clearButton && clearButton.dataset.agrivietUploadBound !== 'true') {
+      clearButton.dataset.agrivietUploadBound = 'true';
+      clearButton.addEventListener('click', () => this.clearSelectedImage());
+    }
+
+    if (typeof window !== 'undefined' && window.__agrivietPasteBound !== true) {
+      window.__agrivietPasteBound = true;
+      window.addEventListener('paste', event => {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+          if (!item.type.startsWith('image/')) continue;
+          const file = item.getAsFile();
+          if (file) void this.handleFileSelected(file);
+          break;
+        }
+      });
+    }
+  }
+
+  async handleFileSelected(file) {
+    if (!file?.type?.startsWith('image/')) {
+      this.showToast('Vui lòng chọn file hình ảnh (JPG, PNG hoặc WebP).', 'warning');
       return;
     }
 
-    const scanBtn = document.getElementById('analyzeBtn');
-    const loadingState = document.getElementById('loadingSpinner');
-    const resultCard = document.getElementById('resultsSection');
+    if (Number(file.size) > 10 * 1024 * 1024) {
+      this.showToast('Ảnh vượt quá giới hạn 10 MB.', 'warning');
+      return;
+    }
 
-    if (scanBtn) scanBtn.disabled = true;
-    if (loadingState) loadingState.classList.remove('hidden');
-    if (resultCard) resultCard.classList.add('opacity-30', 'pointer-events-none');
+    try {
+      const result = await ImageProcessor.compressImage(file);
+      const base64 = result?.base64Uri || result?.base64 || '';
+      if (!base64) throw new Error('Image compression returned no image data.');
+
+      this.currentImageBase64 = base64;
+      this.updateImagePreview(base64);
+      const analyzeButton = getElement('analyzeBtn');
+      if (analyzeButton) analyzeButton.disabled = false;
+      this.showToast('Ảnh đã sẵn sàng. Nhấn “Phân tích ảnh” để chẩn đoán.', 'info');
+    } catch (error) {
+      console.warn('[AgriVietApp] Unable to process image:', error);
+      this.showToast('Không đọc được ảnh. Vui lòng thử lại.', 'warning');
+    }
+  }
+
+  updateImagePreview(base64) {
+    const preview = getElement('imagePreview');
+    const frame = getElement('previewFrame');
+    const placeholder = getElement('dropzonePlaceholder');
+    const readyStatus = getElement('imageReadyStatus');
+
+    if (!base64) {
+      if (preview) preview.removeAttribute('src');
+      setHidden(frame, true);
+      setHidden(placeholder, false);
+      setHidden(readyStatus, true);
+      return;
+    }
+
+    if (preview) preview.src = base64;
+    setHidden(frame, false);
+    setHidden(placeholder, true);
+    setHidden(readyStatus, false);
+  }
+
+  clearSelectedImage() {
+    this.currentImageBase64 = null;
+    this.updateImagePreview(null);
+    const analyzeButton = getElement('analyzeBtn');
+    if (analyzeButton) analyzeButton.disabled = true;
+  }
+
+  async runAnalysis() {
+    if (!this.currentImageBase64) {
+      this.showToast('Vui lòng chọn hoặc chụp ảnh lá cây cần chẩn đoán.', 'warning');
+      return null;
+    }
+
+    const analyzeButton = getElement('analyzeBtn');
+    const loadingPanel = getElement('loadingSpinner');
+    const diagnosisCard = getElement('diagnosisCard');
+    const analyzeIcon = getElement('analyzeIcon');
+    const analyzeSpinner = getElement('analyzeSpinner');
+    const analyzeLabel = getElement('analyzeLabel');
+
+    if (analyzeButton) {
+      analyzeButton.disabled = true;
+      analyzeButton.dataset.state = 'loading';
+    }
+    setHidden(loadingPanel, false);
+    setHidden(analyzeIcon, true);
+    setHidden(analyzeSpinner, false);
+    if (analyzeLabel) analyzeLabel.textContent = 'Đang phân tích';
+    if (diagnosisCard) diagnosisCard.setAttribute('aria-busy', 'true');
 
     try {
       const diagnosis = await GeminiService.diagnoseCropImage(
@@ -205,196 +314,442 @@ class AgriVietApp {
 
       this.currentDiagnosis = diagnosis;
       this.renderDiagnosis(diagnosis);
-      this.showToast('Đã hoàn tất phân tích bệnh lý thực vật!', 'success');
-    } catch (e) {
-      console.error('[Diagnosis] Error:', e);
-      this.showToast('Lỗi chẩn đoán: ' + e.message, 'error');
+      this.setTankCapacity(16);
+      this.showToast('Đã hoàn tất phân tích bệnh lý thực vật.', 'success');
+      return diagnosis;
+    } catch (error) {
+      console.error('[AgriVietApp] Diagnosis failed:', error);
+      this.showToast(`Lỗi chẩn đoán: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      return null;
     } finally {
-      if (scanBtn) scanBtn.disabled = false;
-      if (loadingState) loadingState.classList.add('hidden');
-      if (resultCard) resultCard.classList.remove('opacity-30', 'pointer-events-none');
+      if (analyzeButton) {
+        analyzeButton.disabled = false;
+        delete analyzeButton.dataset.state;
+      }
+      setHidden(loadingPanel, true);
+      setHidden(analyzeIcon, false);
+      setHidden(analyzeSpinner, true);
+      if (analyzeLabel) analyzeLabel.textContent = 'Phân tích ảnh';
+      if (diagnosisCard) diagnosisCard.removeAttribute('aria-busy');
     }
   }
 
   renderDiagnosis(data) {
-    const card = document.getElementById('resultsSection');
-    if (!card) return;
+    if (!data) return;
 
-    let severityBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Mức Độ: Nhẹ</span>';
-    if (data.severityLevel === 'Nghiêm trọng') {
-      severityBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">Mức Độ: Nghiêm Trọng</span>';
-    } else if (data.severityLevel === 'Trung bình') {
-      severityBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">Mức Độ: Cảnh Báo</span>';
+    const diagnosisCard = getElement('diagnosisCard');
+    setHidden(diagnosisCard, false);
+
+    const cropName = getElement('diagnosisCrop');
+    const diseaseName = getElement('diseaseTitle');
+    const scientificName = getElement('diseaseScientific');
+    const confidenceBadge = getElement('confidenceBadge');
+    const confidenceMeter = getElement('confidenceMeter');
+    const symptoms = getElement('symptomsText');
+    const causes = getElement('causesText');
+
+    if (cropName) cropName.textContent = data.cropName || 'Cây trồng';
+    if (diseaseName) diseaseName.textContent = data.diseaseNameVi || 'Bệnh cây trồng chưa xác định';
+    if (scientificName) scientificName.textContent = data.diseaseNameScientific || 'Đang cập nhật';
+
+    const confidence = Math.max(0, Math.min(100, Number(data.confidenceScore) || 0));
+    if (confidenceBadge) confidenceBadge.textContent = `${confidence}%`;
+    if (confidenceMeter) confidenceMeter.style.width = `${confidence}%`;
+    if (symptoms) symptoms.textContent = data.symptomsSummary || 'Chưa có mô tả triệu chứng.';
+    if (causes) causes.textContent = data.primaryCauses || 'Chưa có thông tin nguyên nhân.';
+
+    const severity = data.severityLevel || 'Trung bình';
+    const severityBadge = getElement('severityBadge');
+    if (severityBadge) {
+      const severityClass = severity === 'Nghiêm trọng'
+        ? 'badge-alert'
+        : severity === 'Trung bình' ? 'badge-warning' : 'badge-success';
+      severityBadge.className = `badge ${severityClass}`;
+      severityBadge.textContent = `Mức độ: ${severity}`;
     }
 
-    document.getElementById('cropName').textContent = data.cropName;
-    document.getElementById('diseaseName').textContent = data.diseaseNameVi;
-    document.getElementById('diseaseNameSci').textContent = data.diseaseNameScientific;
-    document.getElementById('confidenceScore').textContent = `${data.confidenceScore}%`;
-    document.getElementById('confidenceMeter').style.width = `${data.confidenceScore}%`;
-    document.getElementById('severityBadge').innerHTML = severityBadge;
-    document.getElementById('symptomsSummary').textContent = data.symptomsSummary;
-    document.getElementById('primaryCauses').textContent = data.primaryCauses;
-
-    // Organic Tab
     const organic = data.organicTreatment || {};
-    document.getElementById('organicSteps').innerHTML = (organic.steps || []).map((s, i) => `
-      <li class="flex items-start gap-3 text-sm text-slate-700">
-        <span class="flex-shrink-0 w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs flex items-center justify-center font-mono font-bold">${i + 1}</span>
-        <span class="leading-relaxed">${escapeHTML(s)}</span>
-      </li>
-    `).join('');
-    document.getElementById('organicBioProducts').textContent = organic.bioProducts || 'Trichoderma viride, Bacillus subtilis VietGAP.';
+    const organicTitle = getElement('organicTreatmentText');
+    const organicSteps = getElement('organicSteps');
+    const organicProducts = getElement('organicBioProducts');
+    if (organicTitle) organicTitle.textContent = organic.title || 'Phác đồ Sinh học / Hữu cơ VietGAP';
+    if (organicSteps) {
+      organicSteps.innerHTML = (Array.isArray(organic.steps) ? organic.steps : []).map((step, index) => `
+        <li><span class="step-number">${index + 1}</span><span>${escapeHTML(step)}</span></li>
+      `).join('');
+    }
+    if (organicProducts) organicProducts.textContent = organic.bioProducts || 'Trichoderma spp., Bacillus spp.';
 
-    // Chemical Tab
-    const chem = data.chemicalTreatment || {};
-    this.currentDosageInstruction = chem.dosageInstructions || '';
-    document.getElementById('activeIngredients').textContent = chem.activeIngredients || 'Hoạt chất đặc trị';
-    document.getElementById('dosageInstructions').textContent = chem.dosageInstructions || 'Pha theo hướng dẫn';
-    document.getElementById('quarantineDays').textContent = `${chem.quarantineDays || 14} Ngày`;
+    const chemical = data.chemicalTreatment || {};
+    const chemicalTitle = getElement('chemicalTreatmentText');
+    const activeIngredients = getElement('activeIngredients');
+    const quarantineDays = getElement('quarantineDays');
+    const dosageInstructions = getElement('dosageInstructions');
+    if (chemicalTitle) chemicalTitle.textContent = chemical.title || 'Phác đồ Hóa học Đặc trị';
+    if (activeIngredients) activeIngredients.textContent = chemical.activeIngredients || 'Hoạt chất được đăng ký';
+    if (quarantineDays) quarantineDays.textContent = `${chemical.quarantineDays ?? 14} ngày`;
+    if (dosageInstructions) dosageInstructions.textContent = chemical.dosageInstructions || 'Pha theo đúng liều ghi trên nhãn.';
 
-    // Prevention List
-    document.getElementById('seasonalPrevention').innerHTML = (data.seasonalPrevention || []).map(p => `
-      <li class="flex items-start gap-2.5 text-xs text-slate-600">
-        <span class="text-emerald-400 font-bold shrink-0">✓</span>
-        <span class="leading-relaxed">${escapeHTML(p)}</span>
-      </li>
-    `).join('');
-
-    card.classList.remove('hidden');
+    this.currentDosageInstruction = chemical.dosageInstructions || '';
     this.switchTreatmentTab(this.treatmentTab);
     this.renderTankDosage();
   }
 
   switchTreatmentTab(tab) {
-    this.treatmentTab = tab;
-    const organicTab = document.getElementById('organicTab');
-    const chemicalTab = document.getElementById('chemicalTab');
-    const paneOrg = document.getElementById('organicPanel');
-    const paneChem = document.getElementById('chemicalPanel');
+    this.treatmentTab = tab === 'chemical' ? 'chemical' : 'organic';
+    const organicActive = this.treatmentTab === 'organic';
 
-    if (!organicTab || !chemicalTab) return;
+    const organicButton = getElement('tabOrganicBtn') || getElement('organicTab');
+    const chemicalButton = getElement('tabChemicalBtn') || getElement('chemicalTab');
+    const organicPanel = getElement('organicTreatmentPanel') || getElement('organicPanel');
+    const chemicalPanel = getElement('chemicalTreatmentPanel') || getElement('chemicalPanel');
 
-    const organicActive = tab === 'organic';
-    organicTab.className = organicActive ? 'treatment-tab active px-3' : 'treatment-tab px-3';
-    chemicalTab.className = organicActive ? 'treatment-tab px-3' : 'treatment-tab active px-3';
-    organicTab.setAttribute('aria-selected', String(organicActive));
-    chemicalTab.setAttribute('aria-selected', String(!organicActive));
-    paneOrg.classList.toggle('hidden', !organicActive);
-    paneChem.classList.toggle('hidden', organicActive);
-    paneOrg.setAttribute('aria-hidden', String(!organicActive));
-    paneChem.setAttribute('aria-hidden', String(organicActive));
+    if (organicButton) {
+      organicButton.setAttribute('aria-selected', String(organicActive));
+      organicButton.classList.toggle('active', organicActive);
+    }
+    if (chemicalButton) {
+      chemicalButton.setAttribute('aria-selected', String(!organicActive));
+      chemicalButton.classList.toggle('active', !organicActive);
+    }
+    setHidden(organicPanel, !organicActive);
+    setHidden(chemicalPanel, organicActive);
+
+    if (organicPanel) organicPanel.setAttribute('aria-hidden', String(!organicActive));
+    if (chemicalPanel) chemicalPanel.setAttribute('aria-hidden', String(organicActive));
   }
 
   setTankCapacity(liters) {
-    this.tankCapacity = liters;
-    document.querySelectorAll('.tank-btn').forEach(btn => {
-      btn.classList.toggle('active', Number(btn.getAttribute('data-capacity')) === liters);
-    });
-    this.renderTankDosage();
-  }
+    const parsedCapacity = Number(liters);
+    this.tankCapacity = Number.isFinite(parsedCapacity) && parsedCapacity > 0 ? parsedCapacity : 16;
 
-  renderTankDosage() {
-    const el = document.getElementById('tankDosageResult');
-    if (!el) return;
-
-    const instruction = this.currentDosageInstruction || this.currentDiagnosis?.chemicalTreatment?.dosageInstructions || '';
-    if (!instruction) {
-      el.textContent = 'Chọn dung tích bình để xem liều pha.';
-      return;
-    }
-
-    const result = DosageCalculator.calculateTankDosage(instruction, this.tankCapacity);
-    el.textContent = result.calculatedDosageText;
-  }
-
-  async submitVoiceQuery(question) {
-    if (!question || !question.trim()) return;
-
-    const chatContainer = document.getElementById('voiceChatFeed');
-    const input = document.getElementById('voiceQuestionInput');
-    if (input) input.value = '';
-
-    if (chatContainer) {
-      chatContainer.innerHTML += `
-        <div class="flex items-start gap-3 justify-end">
-          <div class="bg-emerald-600 text-white rounded-2xl rounded-tr-none px-4 py-2.5 max-w-[80%] text-sm shadow-md leading-relaxed">
-            ${escapeHTML(question)}
-          </div>
-          <div class="w-8 h-8 rounded-full bg-emerald-800 flex items-center justify-center text-xs font-bold text-emerald-200 shrink-0">Bạn</div>
-        </div>
-      `;
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    const context = this.currentDiagnosis ? {
-      crop: this.currentDiagnosis.cropName,
-      disease: this.currentDiagnosis.diseaseNameVi
-    } : {};
-
-    const answer = await GeminiService.askFarmingAssistant(question, context, this.apiKey);
-
-    if (chatContainer) {
-      chatContainer.innerHTML += `
-        <div class="flex items-start gap-3 justify-start">
-          <div class="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-700/60 flex items-center justify-center text-xs font-bold text-emerald-400 shrink-0">AI</div>
-          <div class="bg-white border border-emerald-900/40 text-slate-700 rounded-2xl rounded-tl-none px-4 py-3.5 max-w-[85%] text-sm shadow-md space-y-2">
-            <p class="leading-relaxed">${escapeHTML(answer)}</p>
-            <button class="btn-read-aloud text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 mt-2 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-800/40">
-              🔊 Nghe phát âm
-            </button>
-          </div>
-        </div>
-      `;
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-
-      chatContainer.querySelectorAll('.btn-read-aloud').forEach(b => {
-        b.onclick = () => this.speakText(answer);
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('.tank-btn').forEach(button => {
+        const isActive = Number(button.getAttribute('data-capacity')) === this.tankCapacity;
+        button.setAttribute('aria-pressed', String(isActive));
+        button.classList.toggle('active', isActive);
       });
     }
 
-    this.speakText(answer);
+    return this.renderTankDosage();
   }
 
-  async loadWeather(lat = 10.0452, lon = 105.7469) {
-    const container = document.getElementById('weatherData');
-    if (!container) return;
+  renderTankDosage() {
+    const output = getElement('dosageOutputText') || getElement('tankDosageResult');
+    if (!output) return null;
+
+    if (!this.currentDosageInstruction) {
+      output.textContent = 'Chọn dung tích bình để xem liều pha.';
+      return null;
+    }
+
+    const result = DosageCalculator.calculateTankDosage(
+      this.currentDosageInstruction,
+      this.tankCapacity
+    );
+    output.textContent = result.calculatedDosageText;
+    return result;
+  }
+
+  setupSpeech() {
+    this.setupSpeechRecognition();
+  }
+
+  setupSpeechRecognition() {
+    if (typeof window === 'undefined') return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
 
     try {
-      const data = await WeatherRadarService.getAgriculturalRisk(lat, lon);
-      document.getElementById('weatherTemperature').textContent = `${data.temperature}°C`;
-      document.getElementById('weatherHumidity').textContent = `${data.humidity}%`;
-      document.getElementById('weatherRain').textContent = `${data.precipitation} mm`;
+      this.recognition = new SpeechRecognition();
+      this.recognition.lang = 'vi-VN';
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
 
-      const risk = data.riskEvaluation;
-      const riskBadge = document.getElementById('weatherRiskBadge');
-      const riskDesc = document.getElementById('weatherRiskWarning');
+      this.recognition.onstart = () => {
+        this.isRecording = true;
+        this.updateMicUI(true);
+      };
 
-      if (riskBadge) {
-        riskBadge.textContent = risk.level;
-        riskBadge.className = `px-3 py-1 rounded-full text-xs font-bold border ${risk.badgeClass}`;
-      }
-      if (riskDesc) riskDesc.textContent = risk.warningText;
+      this.recognition.onresult = event => {
+        const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+        if (!transcript) return;
+        const input = getElement('voiceTextInput');
+        if (input) input.value = transcript;
+        void this.submitVoiceQuery(transcript);
+      };
 
-      const forecastEl = document.getElementById('weatherForecast');
-      if (forecastEl && data.forecast3Days) {
-        forecastEl.innerHTML = data.forecast3Days.map(f => `
-          <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-center space-y-1">
-            <div class="text-xs text-slate-500 font-medium">${f.date}</div>
-            <div class="text-sm font-bold text-slate-700 my-0.5">${f.tempMin}° - ${f.tempMax}°C</div>
-            <div class="text-xs text-cyan-700 font-medium">🌧️ Mưa: ${f.rainProb}%</div>
-          </div>
-        `).join('');
-      }
-    } catch (e) {
-      console.error('[Weather] Failed to load:', e);
+      this.recognition.onerror = event => {
+        console.warn('[AgriVietApp] Speech recognition error:', event.error);
+        this.isRecording = false;
+        this.updateMicUI(false);
+        this.showToast(`Nhận diện giọng nói: ${event.error || 'không xác định'}.`, 'warning');
+      };
+
+      this.recognition.onend = () => {
+        this.isRecording = false;
+        this.updateMicUI(false);
+      };
+    } catch (error) {
+      this.recognition = null;
+      console.warn('[AgriVietApp] Speech recognition unavailable:', error);
     }
   }
 
-  saveCurrentToLogbook() {
-    if (!this.currentDiagnosis) {
-      this.showToast('Chưa có kết quả chẩn đoán nào để lưu!', 'warning');
+  toggleRecording() {
+    if (!this.recognition) {
+      this.showToast('Trình duyệt không hỗ trợ nhận diện giọng nói. Vui lòng nhập câu hỏi bằng bàn phím.', 'warning');
       return;
+    }
+
+    try {
+      if (this.isRecording) {
+        this.recognition.stop();
+      } else {
+        this.recognition.start();
+      }
+    } catch (error) {
+      console.warn('[AgriVietApp] Unable to toggle speech recognition:', error);
+      this.isRecording = false;
+      this.updateMicUI(false);
+    }
+  }
+
+  updateMicUI(recording) {
+    const button = getElement('voiceRecordBtn');
+    const waveform = getElement('voiceWaveform');
+    const status = getElement('voiceRecordStatus');
+
+    if (button) {
+      button.dataset.recording = String(recording);
+      button.setAttribute('aria-pressed', String(recording));
+      button.setAttribute('aria-label', recording ? 'Dừng ghi âm' : 'Bắt đầu ghi âm');
+    }
+    setHidden(waveform, !recording);
+    if (status) status.textContent = recording ? 'ĐANG NGHE' : 'SẴN SÀNG';
+  }
+
+  async submitVoiceQuery(question) {
+    const cleanQuestion = String(question ?? '').trim();
+    if (!cleanQuestion) return '';
+
+    const input = getElement('voiceTextInput');
+    if (input) input.value = '';
+
+    const chatStream = getElement('voiceChatStream');
+    if (chatStream && typeof document !== 'undefined') {
+      const userRow = document.createElement('div');
+      userRow.className = 'chat-row is-user';
+      const userBubble = document.createElement('div');
+      userBubble.className = 'chat-bubble';
+      userBubble.textContent = cleanQuestion;
+      const userAvatar = document.createElement('span');
+      userAvatar.className = 'chat-avatar';
+      userAvatar.setAttribute('aria-hidden', 'true');
+      userAvatar.textContent = 'Bạn';
+      userRow.append(userBubble, userAvatar);
+      chatStream.append(userRow);
+      chatStream.scrollTop = chatStream.scrollHeight;
+    }
+
+    const context = this.currentDiagnosis
+      ? { crop: this.currentDiagnosis.cropName, disease: this.currentDiagnosis.diseaseNameVi }
+      : {};
+    const answer = await GeminiService.askFarmingAssistant(cleanQuestion, context, this.apiKey);
+
+    if (chatStream && typeof document !== 'undefined') {
+      const answerRow = document.createElement('div');
+      answerRow.className = 'chat-row';
+      const answerAvatar = document.createElement('span');
+      answerAvatar.className = 'chat-avatar';
+      answerAvatar.setAttribute('aria-hidden', 'true');
+      answerAvatar.textContent = 'AI';
+      const answerBubble = document.createElement('div');
+      answerBubble.className = 'chat-bubble';
+      const answerParagraph = document.createElement('p');
+      answerParagraph.textContent = String(answer ?? '');
+      const readButton = document.createElement('button');
+      readButton.type = 'button';
+      readButton.className = 'btn btn-quiet btn-read-aloud';
+      readButton.setAttribute('aria-label', 'Nghe câu trả lời');
+      const iconDocument = new DOMParser().parseFromString(renderIcon('volume', { size: 16 }), 'image/svg+xml');
+      const icon = iconDocument.documentElement;
+      if (icon?.nodeName.toLowerCase() === 'svg') readButton.append(document.importNode(icon, true));
+      const readLabel = document.createElement('span');
+      readLabel.textContent = 'Nghe câu trả lời';
+      readButton.append(readLabel);
+      readButton.addEventListener('click', () => this.speakText(answer));
+      answerBubble.append(answerParagraph, readButton);
+      answerRow.append(answerAvatar, answerBubble);
+      chatStream.append(answerRow);
+      chatStream.scrollTop = chatStream.scrollHeight;
+    }
+
+    this.speakText(answer);
+    return answer;
+  }
+
+  speakText(text) {
+    if (!this.synth || typeof text !== 'string' || !text.trim()) return;
+
+    const Utterance = typeof globalThis.SpeechSynthesisUtterance === 'function'
+      ? globalThis.SpeechSynthesisUtterance
+      : typeof window !== 'undefined' ? window.SpeechSynthesisUtterance : null;
+    if (!Utterance) return;
+
+    this.synth.cancel?.();
+    const utterance = new Utterance(text.replace(/[*#_`]/g, '').trim());
+    utterance.lang = 'vi-VN';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    const voices = this.synth.getVoices?.() || [];
+    const vietnameseVoice = voices.find(voice => String(voice.lang).toLowerCase().startsWith('vi'));
+    if (vietnameseVoice) utterance.voice = vietnameseVoice;
+    this.synth.speak?.(utterance);
+  }
+
+  async loadWeather(regionIdx = 0) {
+    const container = getElement('weatherData');
+    if (!container) return null;
+
+    const index = Number.isInteger(Number(regionIdx)) ? Number(regionIdx) : 0;
+    const regionSelect = getElement('weatherRegionSelect');
+    if (regionSelect) regionSelect.value = String(index);
+
+    try {
+      const data = typeof WeatherRadarService.fetchRegionalWeather === 'function'
+        ? await WeatherRadarService.fetchRegionalWeather(index)
+        : await WeatherRadarService.getAgriculturalRisk();
+
+      const temperature = data.temp ?? data.temperature ?? 0;
+      const humidity = data.humidity ?? 0;
+      const precipitation = data.rain ?? data.precipitation ?? 0;
+      const wind = data.wind ?? '—';
+      const risk = data.risk || data.riskEvaluation || {};
+
+      const location = getElement('weatherLocation');
+      const temperatureElement = getElement('weatherTemperature');
+      const humidityElement = getElement('weatherHumidity');
+      const precipitationElement = getElement('weatherPrecipitation');
+      const windElement = getElement('weatherWind');
+      const riskLevel = getElement('fungalRiskLevel');
+      const riskScore = getElement('fungalRiskScore');
+      const riskMeter = getElement('fungalRiskMeter');
+      const riskAlert = getElement('fungalRiskAlert');
+
+      if (location) location.textContent = `${data.regionName || data.locationName || 'Khu vực theo dõi'} · ${data.mainCrops || ''}`;
+      if (temperatureElement) temperatureElement.textContent = `${temperature}°C`;
+      if (humidityElement) humidityElement.textContent = `${humidity}%`;
+      if (precipitationElement) precipitationElement.textContent = `${precipitation} mm`;
+      if (windElement) windElement.textContent = typeof wind === 'number' ? `${wind} km/h` : String(wind);
+      if (riskLevel) {
+        riskLevel.textContent = risk.level || 'Chưa xác định';
+        riskLevel.className = `badge ${this.getRiskBadgeClass(risk)}`;
+      }
+      if (riskScore) riskScore.textContent = String(risk.score ?? 0);
+      if (riskMeter) riskMeter.style.width = `${Math.max(0, Math.min(100, Number(risk.score) || 0))}%`;
+      if (riskAlert) riskAlert.textContent = risk.warningText || 'Chưa có cảnh báo thời tiết.';
+
+      this.renderHourlyTrend(data.hourly);
+      return data;
+    } catch (error) {
+      console.error('[AgriVietApp] Weather load failed:', error);
+      this.showToast('Không tải được dữ liệu thời tiết khu vực.', 'warning');
+      return null;
+    }
+  }
+
+  getRiskBadgeClass(risk) {
+    const score = Number(risk?.score);
+    if (risk?.level === 'Nguy cơ Cao' || score >= 75) return 'badge-alert';
+    if (risk?.level === 'Nguy cơ Trung bình' || score >= 45) return 'badge-warning';
+    return 'badge-success';
+  }
+
+  renderHourlyTrend(hourly) {
+    const trend = getElement('hourlyTrend');
+    if (!trend) return;
+
+    const humidityValues = Array.isArray(hourly?.relative_humidity_2m)
+      ? hourly.relative_humidity_2m.slice(0, 8)
+      : [];
+    const times = Array.isArray(hourly?.time) ? hourly.time.slice(0, humidityValues.length) : [];
+
+    if (!humidityValues.length) return;
+
+    const min = Math.min(...humidityValues);
+    const max = Math.max(...humidityValues);
+    trend.innerHTML = humidityValues.map((value, index) => {
+      const ratio = max === min ? 0.65 : (value - min) / (max - min);
+      const height = Math.round(32 + ratio * 68);
+      const label = times[index] ? String(times[index]).slice(11, 16) : `${index + 1}h`;
+      return `<div class="trend-column"><span class="trend-bar" style="height: ${height}px" title="${escapeHTML(value)}%"></span><span class="trend-label">${escapeHTML(label)}</span></div>`;
+    }).join('');
+  }
+
+  renderLogbook() {
+    const tableBody = getElement('logbookList') || (
+      typeof document !== 'undefined' ? document.querySelector('#logbookTable tbody') : null
+    );
+    if (!tableBody) return;
+
+    const logs = LogbookService.getLogs();
+    const total = getElement('logbookTotal');
+    const open = getElement('logbookOpen');
+    const resolved = getElement('logbookResolved');
+
+    if (total) total.textContent = String(logs.length);
+    if (open) open.textContent = String(logs.filter(log => log.status === 'Đang theo dõi').length);
+    if (resolved) resolved.textContent = String(logs.filter(log => log.status === 'Đã khỏi bệnh').length);
+
+    if (!logs.length) {
+      tableBody.innerHTML = '<tr><td colspan="6" class="py-12 text-center">Chưa có ghi chép. Hãy lưu kết quả chẩn đoán đầu tiên.</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = logs.map(log => {
+      const severityClass = log.severityLevel === 'Nghiêm trọng' ? 'badge-alert' : 'badge-warning';
+      return `
+        <tr>
+          <td>${escapeHTML(new Date(log.createdAt).toLocaleDateString('vi-VN'))}</td>
+          <td>${escapeHTML(log.cropName)}</td>
+          <td>${escapeHTML(log.diseaseNameVi)}</td>
+          <td><span class="badge ${severityClass}">${escapeHTML(log.severityLevel)}</span></td>
+          <td>
+            <select data-log-id="${escapeHTML(log.id)}" class="status-select field-control">
+              <option value="Đang theo dõi" ${log.status === 'Đang theo dõi' ? 'selected' : ''}>Đang theo dõi</option>
+              <option value="Đã xử lý" ${log.status === 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
+              <option value="Đã khỏi bệnh" ${log.status === 'Đã khỏi bệnh' ? 'selected' : ''}>Đã khỏi bệnh</option>
+            </select>
+          </td>
+          <td><button type="button" data-delete-id="${escapeHTML(log.id)}" class="btn btn-quiet btn-delete-log">Xóa</button></td>
+        </tr>
+      `;
+    }).join('');
+
+    tableBody.querySelectorAll('.status-select').forEach(select => {
+      select.addEventListener('change', event => {
+        LogbookService.updateStatus(event.target.getAttribute('data-log-id'), event.target.value);
+        this.renderLogbook();
+        this.showToast('Đã cập nhật tiến độ điều trị.', 'info');
+      });
+    });
+
+    tableBody.querySelectorAll('.btn-delete-log').forEach(button => {
+      button.addEventListener('click', event => {
+        LogbookService.deleteLog(event.currentTarget.getAttribute('data-delete-id'));
+        this.renderLogbook();
+        this.showToast('Đã xóa ghi chép.', 'info');
+      });
+    });
+  }
+
+  saveCurrentDiagnosisToLogbook() {
+    if (!this.currentDiagnosis) {
+      this.showToast('Chưa có kết quả chẩn đoán nào để lưu.', 'warning');
+      return null;
     }
 
     const entry = LogbookService.addLog({
@@ -402,327 +757,253 @@ class AgriVietApp {
       thumbnail: this.currentImageBase64,
       location: 'Vườn nhà'
     });
-
     this.renderLogbook();
-    this.showToast(`Đã lưu "${entry.diseaseNameVi}" vào Nhật Ký Đồng Ruộng!`, 'success');
+    this.showToast(`Đã lưu “${entry.diseaseNameVi}” vào nhật ký đồng ruộng.`, 'success');
+    return entry;
   }
 
-  renderLogbook() {
-    const tableBody = document.querySelector('#logbookTable tbody');
-    if (!tableBody) return;
+  saveCurrentToLogbook() {
+    return this.saveCurrentDiagnosisToLogbook();
+  }
 
-    const logs = LogbookService.getLogs();
-
-    if (logs.length === 0) {
-      tableBody.innerHTML = `
-        <tr>
-          <td colspan="6" class="text-center py-10 text-slate-500 text-sm">
-            Chưa có ghi chép bệnh hại nào. Hãy thực hiện chẩn đoán và bấm "Lưu Vào Nhật Ký".
-          </td>
-        </tr>
-      `;
-      return;
+  exportLogbookCsv() {
+    const csvContent = LogbookService.exportToCSV();
+    if (typeof document === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') {
+      return csvContent;
     }
 
-    tableBody.innerHTML = logs.map(l => `
-      <tr class="border-b border-slate-800/60 hover:bg-emerald-950/10 text-sm transition-colors">
-        <td class="py-3.5 px-3 text-slate-500 text-xs font-mono">${new Date(l.createdAt).toLocaleDateString('vi-VN')}</td>
-        <td class="py-3.5 px-3 font-bold text-slate-700">${escapeHTML(l.cropName)}</td>
-        <td class="py-3.5 px-3 font-semibold text-emerald-400">${escapeHTML(l.diseaseNameVi)}</td>
-        <td class="py-3.5 px-3">
-          <span class="px-2.5 py-1 rounded-md text-xs font-medium ${l.severityLevel === 'Nghiêm trọng' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}">
-            ${escapeHTML(l.severityLevel)}
-          </span>
-        </td>
-        <td class="py-3.5 px-3">
-          <select data-log-id="${escapeHTML(l.id)}" class="status-select bg-white border border-slate-300 text-xs rounded-lg px-2.5 py-1.5 text-slate-700 focus:ring-1 focus:ring-emerald-500">
-            <option value="Đang theo dõi" ${l.status === 'Đang theo dõi' ? 'selected' : ''}>Đang theo dõi</option>
-            <option value="Đã xử lý" ${l.status === 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
-            <option value="Đã khỏi bệnh" ${l.status === 'Đã khỏi bệnh' ? 'selected' : ''}>Đã khỏi bệnh</option>
-          </select>
-        </td>
-        <td class="py-3.5 px-3 text-right">
-          <button data-delete-id="${escapeHTML(l.id)}" class="btn-delete-log text-slate-500 hover:text-rose-400 text-xs px-2 py-1 transition-colors">Xóa</button>
-        </td>
-      </tr>
-    `).join('');
-
-    tableBody.querySelectorAll('.status-select').forEach(sel => {
-      sel.onchange = (e) => {
-        const id = e.target.getAttribute('data-log-id');
-        LogbookService.updateStatus(id, e.target.value);
-        this.showToast('Đã cập nhật tiến độ điều trị!', 'info');
-      };
-    });
-
-    tableBody.querySelectorAll('.btn-delete-log').forEach(b => {
-      b.onclick = (e) => {
-        const id = e.target.getAttribute('data-delete-id');
-        LogbookService.deleteLog(id);
-        this.renderLogbook();
-        this.showToast('Đã xóa ghi chép!', 'info');
-      };
-    });
-  }
-
-  exportCSV() {
-    const csvContent = LogbookService.exportToCSV();
     const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `agriviet_nhat_ky_dong_ruong_${Date.now()}.csv`);
+    link.href = url;
+    link.download = `agriviet-nhat-ky-${Date.now()}.csv`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    this.showToast('Đã xuất file báo cáo CSV thành công!', 'success');
+    link.remove();
+    URL.revokeObjectURL?.(url);
+    this.showToast('Đã xuất file báo cáo CSV.', 'success');
+    return csvContent;
+  }
+
+  exportCSV() {
+    return this.exportLogbookCsv();
   }
 
   showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
+    const toast = getElement('toast');
     if (!toast) return;
 
-    const colors = {
-      success: 'bg-emerald-600 text-white shadow-emerald-900/50',
-      error: 'bg-rose-600 text-white shadow-rose-900/50',
-      warning: 'bg-amber-600 text-white shadow-amber-900/50',
-      info: 'bg-white text-slate-700 border border-slate-200 shadow-slate-900/50'
-    };
-
-    toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 transition-all transform duration-300 ${colors[type] || colors.info}`;
-    toast.textContent = message;
-    toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
-
-    setTimeout(() => {
-      toast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+    toast.dataset.type = type;
+    toast.textContent = String(message ?? '');
+    toast.classList.add('is-visible');
+    this._toastTimer = setTimeout(() => {
+      toast.classList.remove('is-visible');
     }, 3500);
   }
 
-  applyTheme(theme) {
-    this.theme = theme;
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('agriviet_theme', theme);
-    const btn = document.getElementById('themeToggleBtn');
-    if (btn) {
-      btn.textContent = theme === 'dark' ? '☽' : '☼';
-      btn.setAttribute('aria-pressed', String(theme === 'dark'));
+  saveApiKey(key) {
+    const inputValue = key ?? getElement('apiKeyInput')?.value ?? '';
+    this.apiKey = String(inputValue).trim();
+
+    const storage = getStorage();
+    if (this.apiKey) {
+      storage?.setItem('agriviet_gemini_api_key', this.apiKey);
+      this.showToast('Đã kích hoạt Google Gemini API.', 'success');
+    } else {
+      storage?.removeItem('agriviet_gemini_api_key');
+      this.showToast('Đã chuyển về bộ dữ liệu ngoại tuyến.', 'info');
     }
+
+    this.updateApiKeyStatus();
+    this.closeApiKeyModal();
+    return this.apiKey;
+  }
+
+  updateApiKeyStatus() {
+    const status = getElement('apiKeyStatus');
+    const dot = getElement('apiKeyStatusDot');
+    if (status) status.textContent = this.apiKey ? 'API đã kết nối' : 'API chưa kết nối';
+    if (dot) dot.classList.toggle('is-connected', Boolean(this.apiKey));
+  }
+
+  openApiKeyModal() {
+    const modal = getElement('apiKeyModal');
+    const input = getElement('apiKeyInput');
+    if (input) input.value = this.apiKey;
+    setHidden(modal, false);
+    input?.focus?.();
+  }
+
+  closeApiKeyModal() {
+    setHidden(getElement('apiKeyModal'), true);
+  }
+
+  applyTheme(theme = this.theme) {
+    this.theme = theme === 'dark' ? 'dark' : 'light';
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', this.theme);
+      const themeButton = getElement('themeToggleBtn');
+      if (themeButton) {
+        themeButton.setAttribute('aria-pressed', String(this.theme === 'dark'));
+        themeButton.setAttribute('title', this.theme === 'dark' ? 'Chuyển giao diện sáng' : 'Chuyển giao diện tối');
+      }
+    }
+    getStorage()?.setItem('agriviet_theme', this.theme);
+    this.updateApiKeyStatus();
+    return this.theme;
   }
 
   toggleTheme() {
-    this.applyTheme(this.theme === 'dark' ? 'light' : 'dark');
+    return this.applyTheme(this.theme === 'dark' ? 'light' : 'dark');
   }
 
   bindEvents() {
-    // Navigation Tabs
-    document.querySelectorAll('[data-tab]').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const target = tab.getAttribute('data-tab');
-        this.switchNavTab(target);
-      });
+    if (typeof document === 'undefined') return;
+
+    this.bindNavigation();
+    this.bindDropzoneAndUpload();
+
+    const themeButton = getElement('themeToggleBtn');
+    if (themeButton && themeButton.dataset.agrivietBound !== 'true') {
+      themeButton.dataset.agrivietBound = 'true';
+      themeButton.addEventListener('click', () => this.toggleTheme());
+    }
+
+    const organicButton = getElement('tabOrganicBtn');
+    const chemicalButton = getElement('tabChemicalBtn');
+    if (organicButton && organicButton.dataset.agrivietBound !== 'true') {
+      organicButton.dataset.agrivietBound = 'true';
+      organicButton.addEventListener('click', () => this.switchTreatmentTab('organic'));
+    }
+    if (chemicalButton && chemicalButton.dataset.agrivietBound !== 'true') {
+      chemicalButton.dataset.agrivietBound = 'true';
+      chemicalButton.addEventListener('click', () => this.switchTreatmentTab('chemical'));
+    }
+
+    document.querySelectorAll('.tank-btn').forEach(button => {
+      if (button.dataset.agrivietBound === 'true') return;
+      button.dataset.agrivietBound = 'true';
+      button.addEventListener('click', () => this.setTankCapacity(button.getAttribute('data-capacity')));
     });
 
-    const themeBtn = document.getElementById('themeToggleBtn');
-    if (themeBtn) themeBtn.addEventListener('click', () => this.toggleTheme());
-
-    // Treatment Mode Tabs
-    const tabOrg = document.getElementById('organicTab');
-    const tabChem = document.getElementById('chemicalTab');
-    if (tabOrg) tabOrg.addEventListener('click', () => this.switchTreatmentTab('organic'));
-    if (tabChem) tabChem.addEventListener('click', () => this.switchTreatmentTab('chemical'));
-
-    // Tank Capacity Buttons for Dosage Calculator
-    document.querySelectorAll('.tank-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const cap = Number(btn.getAttribute('data-capacity'));
-        this.setTankCapacity(cap);
-      });
-    });
-
-    // Crop Selector
-    const cropSel = document.getElementById('cropSelect');
-    if (cropSel) {
-      cropSel.addEventListener('change', (e) => {
-        this.selectedCrop = e.target.value;
-        this.renderTankDosage();
+    const cropSelect = getElement('cropSelect');
+    if (cropSelect && cropSelect.dataset.agrivietBound !== 'true') {
+      cropSelect.dataset.agrivietBound = 'true';
+      cropSelect.addEventListener('change', event => {
+        this.selectedCrop = event.target.value;
       });
     }
 
-    // Run Scan Button
-    const btnScan = document.getElementById('analyzeBtn');
-    if (btnScan) btnScan.addEventListener('click', () => this.runDiagnosis());
+    const analyzeButton = getElement('analyzeBtn');
+    if (analyzeButton && analyzeButton.dataset.agrivietBound !== 'true') {
+      analyzeButton.dataset.agrivietBound = 'true';
+      analyzeButton.addEventListener('click', () => void this.runAnalysis());
+    }
 
-    // File Upload / Drop
-    const fileInput = document.getElementById('fileInput');
-    const dropZone = document.getElementById('dropzone');
+    const micButton = getElement('voiceRecordBtn');
+    if (micButton && micButton.dataset.agrivietBound !== 'true') {
+      micButton.dataset.agrivietBound = 'true';
+      micButton.addEventListener('click', () => this.toggleRecording());
+    }
 
-    if (fileInput) {
-      fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) this.handleFileSelected(file);
+    const voiceForm = getElement('voiceQuestionForm');
+    if (voiceForm && voiceForm.dataset.agrivietBound !== 'true') {
+      voiceForm.dataset.agrivietBound = 'true';
+      voiceForm.addEventListener('submit', event => {
+        event.preventDefault();
+        void this.submitVoiceQuery(getElement('voiceTextInput')?.value);
       });
     }
 
-    if (dropZone) {
-      dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('drag-active');
-      });
-      dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('drag-active');
-      });
-      dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('drag-active');
-        if (e.dataTransfer.files.length) {
-          this.handleFileSelected(e.dataTransfer.files[0]);
-        }
-      });
-    }
-
-    const cameraInput = document.getElementById('cameraInput');
-    const cameraTrigger = document.getElementById('cameraTrigger');
-    const uploadTrigger = document.getElementById('uploadTrigger');
-
-    if (cameraInput) {
-      cameraInput.addEventListener('change', (e) => {
-        if (e.target.files[0]) this.handleFileSelected(e.target.files[0]);
-      });
-    }
-    if (cameraTrigger && cameraInput) {
-      cameraTrigger.addEventListener('click', () => cameraInput.click());
-    }
-    if (uploadTrigger) {
-      uploadTrigger.addEventListener('click', () => fileInput?.click());
-    }
-
-    window.addEventListener('paste', (e) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) this.handleFileSelected(file);
-          break;
-        }
-      }
-    });
-
-    // Voice Mic & Submit
-    const micBtn = document.getElementById('voiceRecordBtn');
-    if (micBtn) micBtn.addEventListener('click', () => this.toggleRecording());
-
-    const voiceSubmit = document.getElementById('voiceSendBtn');
-    const voiceQuestionInput = document.getElementById('voiceQuestionInput');
-    if (voiceSubmit && voiceQuestionInput) {
-      voiceSubmit.addEventListener('click', () => this.submitVoiceQuery(voiceQuestionInput.value));
-      voiceQuestionInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') this.submitVoiceQuery(voiceQuestionInput.value);
-      });
-    }
-
-    // Quick Voice Chips
     document.querySelectorAll('.voice-chip').forEach(chip => {
+      if (chip.dataset.agrivietBound === 'true') return;
+      chip.dataset.agrivietBound = 'true';
       chip.addEventListener('click', () => {
-        const text = chip.textContent.trim().replace(/^"|"$/g, '');
-        if (voiceQuestionInput) voiceQuestionInput.value = text;
-        this.submitVoiceQuery(text);
+        const text = chip.textContent.trim();
+        const input = getElement('voiceTextInput');
+        if (input) input.value = text;
+        void this.submitVoiceQuery(text);
       });
     });
 
-    // Save to Logbook
-    const btnSaveLog = document.getElementById('saveToLogbookBtn');
-    if (btnSaveLog) btnSaveLog.addEventListener('click', () => this.saveCurrentToLogbook());
+    const speakButton = getElement('speakDiagnosisBtn');
+    if (speakButton && speakButton.dataset.agrivietBound !== 'true') {
+      speakButton.dataset.agrivietBound = 'true';
+      speakButton.addEventListener('click', () => this.speakText(this.getDiagnosisSpeechText()));
+    }
 
-    // Export CSV
-    const exportCsvBtn = document.getElementById('exportCsvBtn');
-    if (exportCsvBtn) exportCsvBtn.addEventListener('click', () => this.exportCSV());
+    const saveButton = getElement('saveLogbookBtn');
+    if (saveButton && saveButton.dataset.agrivietBound !== 'true') {
+      saveButton.dataset.agrivietBound = 'true';
+      saveButton.addEventListener('click', () => this.saveCurrentDiagnosisToLogbook());
+    }
 
-    // Region Select for Weather
-    const regionSelect = document.getElementById('regionSelect');
+    const askButton = getElement('askAboutDiseaseBtn');
+    if (askButton && askButton.dataset.agrivietBound !== 'true') {
+      askButton.dataset.agrivietBound = 'true';
+      askButton.addEventListener('click', () => {
+        this.switchNavTab('voice');
+        const prompt = this.currentDiagnosis?.diseaseNameVi
+          ? `Bệnh ${this.currentDiagnosis.diseaseNameVi} cần xử lý thế nào?`
+          : 'Tôi nên kiểm tra cây trồng này như thế nào?';
+        const input = getElement('voiceTextInput');
+        if (input) input.value = prompt;
+        void this.submitVoiceQuery(prompt);
+      });
+    }
+
+    const exportButton = getElement('exportCsvBtn');
+    if (exportButton && exportButton.dataset.agrivietBound !== 'true') {
+      exportButton.dataset.agrivietBound = 'true';
+      exportButton.addEventListener('click', () => this.exportLogbookCsv());
+    }
+
+    const regionSelect = getElement('weatherRegionSelect');
     if (regionSelect) {
-      regionSelect.innerHTML = VIETNAM_REGIONS.map((r, i) => `
-        <option value="${i}">${r.name}</option>
-      `).join('');
-      regionSelect.addEventListener('change', (e) => {
-        const r = VIETNAM_REGIONS[e.target.value];
-        if (r) this.loadWeather(r.lat, r.lon);
-      });
-    }
-
-    // API Key Modal
-    const btnOpenKeyModal = document.getElementById('apiKeyBtn');
-    const modal = document.getElementById('apiKeyModal');
-    const btnCloseModal = document.getElementById('closeApiKeyBtn');
-    const btnCancelModal = document.getElementById('cancelApiKeyBtn');
-    const btnSaveKey = document.getElementById('saveApiKeyBtn');
-    const apiKeyInput = document.getElementById('apiKeyInput');
-
-    if (btnOpenKeyModal && modal) {
-      btnOpenKeyModal.onclick = () => {
-        if (apiKeyInput) apiKeyInput.value = this.apiKey;
-        modal.classList.remove('hidden');
-      };
-    }
-    if (btnCloseModal && modal) {
-      btnCloseModal.onclick = () => modal.classList.add('hidden');
-    }
-    if (btnCancelModal && modal) {
-      btnCancelModal.onclick = () => modal.classList.add('hidden');
-    }
-    if (btnSaveKey && apiKeyInput && modal) {
-      btnSaveKey.onclick = () => {
-        this.saveApiKey(apiKeyInput.value);
-        modal.classList.add('hidden');
-      };
-    }
-  }
-
-  async handleFileSelected(file) {
-    if (!file.type.startsWith('image/')) {
-      this.showToast('Vui lòng chọn file hình ảnh (JPG, PNG, WebP)!', 'warning');
-      return;
-    }
-    try {
-      const { base64 } = await ImageProcessor.optimizeImage(file);
-      this.currentImageBase64 = base64;
-      const preview = document.getElementById('imagePreview');
-      const prompt = document.getElementById('uploadPrompt');
-      const container = document.getElementById('previewContainer');
-      if (preview && prompt && container) {
-        preview.src = base64;
-        preview.classList.remove('hidden');
-        prompt.classList.add('hidden');
-        container.classList.remove('hidden');
+      regionSelect.innerHTML = VIETNAM_REGIONS.map((region, index) => (
+        `<option value="${index}">${escapeHTML(region.name)}</option>`
+      )).join('');
+      regionSelect.value = '0';
+      if (regionSelect.dataset.agrivietBound !== 'true') {
+        regionSelect.dataset.agrivietBound = 'true';
+        regionSelect.addEventListener('change', event => void this.loadWeather(event.target.value));
       }
-      const btn = document.getElementById('analyzeBtn');
-      if (btn) btn.disabled = false;
-      this.showToast('Ảnh đã sẵn sàng. Nhấn "Chẩn Đoán Ngay".', 'info');
-    } catch (err) {
-      this.showToast('Không đọc được ảnh. Thử lại.', 'warning');
     }
+
+    const apiButton = getElement('apiKeyBtn');
+    const closeButton = getElement('closeApiKeyModalBtn');
+    const cancelButton = getElement('cancelApiKeyBtn');
+    const saveApiKeyButton = getElement('saveApiKeyBtn');
+    if (apiButton && apiButton.dataset.agrivietBound !== 'true') {
+      apiButton.dataset.agrivietBound = 'true';
+      apiButton.addEventListener('click', () => this.openApiKeyModal());
+    }
+    if (closeButton && closeButton.dataset.agrivietBound !== 'true') {
+      closeButton.dataset.agrivietBound = 'true';
+      closeButton.addEventListener('click', () => this.closeApiKeyModal());
+    }
+    if (cancelButton && cancelButton.dataset.agrivietBound !== 'true') {
+      cancelButton.dataset.agrivietBound = 'true';
+      cancelButton.addEventListener('click', () => this.closeApiKeyModal());
+    }
+    if (saveApiKeyButton && saveApiKeyButton.dataset.agrivietBound !== 'true') {
+      saveApiKeyButton.dataset.agrivietBound = 'true';
+      saveApiKeyButton.addEventListener('click', () => this.saveApiKey());
+    }
+
+    this.updateApiKeyStatus();
   }
 
-  switchNavTab(tabName) {
-    this.activeTab = tabName;
-    document.querySelectorAll('[data-tab]').forEach(t => {
-      const isActive = t.getAttribute('data-tab') === tabName;
-      t.setAttribute('aria-selected', String(isActive));
-      t.className = isActive
-        ? 'tab-button active px-3 text-sm sm:px-5'
-        : 'tab-button px-3 text-sm sm:px-5';
-    });
-
-    const panelMap = {
-      scanner: 'tab-scanner',
-      voice: 'voiceTab',
-      weather: 'weatherTab',
-      logbook: 'logbookTab'
-    };
-    Object.entries(panelMap).forEach(([name, id]) => {
-      const el = document.getElementById(id);
-      if (el) el.classList.toggle('hidden', name !== tabName);
-    });
+  getDiagnosisSpeechText() {
+    if (!this.currentDiagnosis) return 'Chưa có kết quả chẩn đoán để đọc.';
+    return [
+      `Cây trồng: ${this.currentDiagnosis.cropName}.`,
+      `Chẩn đoán: ${this.currentDiagnosis.diseaseNameVi}.`,
+      `Độ tin cậy ${this.currentDiagnosis.confidenceScore} phần trăm.`,
+      `Triệu chứng: ${this.currentDiagnosis.symptomsSummary}.`,
+      `Nguyên nhân chính: ${this.currentDiagnosis.primaryCauses}.`
+    ].join(' ');
   }
 }
 
