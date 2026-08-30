@@ -1,9 +1,18 @@
 import { getPresetDiagnosis } from '../data/sample-presets.js';
 
+export const GEMINI_MODELS = Object.freeze({
+  FLASH: 'gemini-2.0-flash',
+  PRO: 'gemini-1.5-pro'
+});
+
 export const GEMINI_CONFIG = {
-  MODEL: 'gemini-2.0-flash',
+  MODEL: GEMINI_MODELS.FLASH,
   API_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/models',
 };
+
+function normalizeModel(model) {
+  return model === GEMINI_MODELS.PRO ? GEMINI_MODELS.PRO : GEMINI_MODELS.FLASH;
+}
 
 export const CROP_LABELS = {
   rice: 'Lúa Nước (Rice)',
@@ -57,7 +66,7 @@ const DIAGNOSIS_RESPONSE_SCHEMA = {
         quarantineDays: { type: 'NUMBER', nullable: true },
         safetyNotes: { type: 'STRING' }
       },
-      required: ['title', 'activeIngredients', 'dosageInstructions', 'safetyNotes']
+      required: ['title', 'activeIngredients', 'dosageInstructions', 'quarantineDays', 'safetyNotes']
     },
     seasonalPrevention: { type: 'ARRAY', items: { type: 'STRING' } }
   },
@@ -156,8 +165,8 @@ function getPresetFallback(cropHint, fallbackReason) {
   return cloneDiagnosis(fallback, extra);
 }
 
-function apiUrl(apiKey) {
-  return `${GEMINI_CONFIG.API_BASE_URL}/${GEMINI_CONFIG.MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+function apiUrl(apiKey, model = GEMINI_MODELS.FLASH) {
+  return `${GEMINI_CONFIG.API_BASE_URL}/${normalizeModel(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 }
 
 function offlineAssistantAnswer(userQuestion) {
@@ -183,8 +192,8 @@ export class GeminiService {
   /**
    * Format an image and an agronomy instruction for Gemini's multimodal API.
    */
-  static formatVisionPayload(base64ImageUri, cropHint = 'general') {
-    const cropText = CROP_LABELS[cropHint] || CROP_LABELS.general;
+  static formatVisionPayload(base64ImageUri, model = GEMINI_MODELS.FLASH) {
+    const selectedModel = normalizeModel(model);
     const imageUri = String(base64ImageUri ?? '');
     let mimeType = 'image/jpeg';
     let rawBase64 = imageUri;
@@ -197,12 +206,12 @@ export class GeminiService {
 
     const systemPrompt = `Bạn là Chuyên Gia Nông Nghiệp và Bác Sĩ Cây Trồng cao cấp tại Việt Nam, am hiểu bệnh lý thực vật nhiệt đới và quy trình VietGAP.
 
-Hãy phân tích kỹ hình ảnh lá, thân hoặc trái; phân biệt bệnh với sâu hại, thiếu dinh dưỡng và tổn thương cơ giới. Chỉ đưa ra chẩn đoán khi có dấu hiệu phù hợp, nêu rõ mức độ tin cậy và ưu tiên biện pháp an toàn, khả thi tại ruộng Việt Nam.
+Trước tiên, hãy tự nhận diện loài cây hoặc cây trồng trong ảnh từ đặc điểm hình thái; không yêu cầu người dùng chọn cây trước và không suy đoán loài cây từ nhãn giao diện. Sau đó phân tích kỹ hình ảnh lá, thân hoặc trái; phân biệt bệnh với sâu hại, thiếu dinh dưỡng và tổn thương cơ giới. Chỉ đưa ra chẩn đoán khi có dấu hiệu phù hợp, nêu rõ mức độ tin cậy và ưu tiên biện pháp an toàn, khả thi tại ruộng Việt Nam.
 
-BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không markdown, không lời dẫn. JSON phải có đủ các trường: cropName, diseaseNameVi, diseaseNameScientific, confidenceScore (number từ 0 đến 100), severityLevel, symptomsSummary, primaryCauses, organicTreatment (title, steps là mảng chuỗi, bioProducts), chemicalTreatment (title, activeIngredients, dosageInstructions, safetyNotes; quarantineDays là number nếu xác minh được, nếu không hãy trả về null), seasonalPrevention (mảng chuỗi). Luôn nêu cảnh báo bảo hộ cá nhân và bảo vệ nguồn nước trong safetyNotes.`;
+BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không markdown, không lời dẫn. JSON phải có đủ các trường: cropName, diseaseNameVi, diseaseNameScientific, confidenceScore (number từ 0 đến 100), severityLevel, symptomsSummary, primaryCauses, organicTreatment (title, steps là mảng chuỗi, bioProducts), chemicalTreatment (title, activeIngredients, dosageInstructions, quarantineDays là number hoặc null, safetyNotes), seasonalPrevention (mảng chuỗi). Luôn nêu cảnh báo bảo hộ cá nhân và bảo vệ nguồn nước trong safetyNotes.`;
 
     const parts = [
-      { text: `Cây trồng mục tiêu: ${cropText}. Hãy chẩn đoán hình ảnh này theo schema JSON bắt buộc.` }
+      { text: `Hãy tự nhận diện loài cây trong hình ảnh này rồi chẩn đoán theo schema JSON bắt buộc. Mô hình đang sử dụng: ${selectedModel}.` }
     ];
     const supportedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
     if (rawBase64 && supportedMimeTypes.has(mimeType)) {
@@ -216,28 +225,21 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
       parts[0].text += ' Ảnh SVG hoặc định dạng chưa hỗ trợ chưa được gửi; chỉ đưa ra hướng dẫn thận trọng, không khẳng định bệnh nếu thiếu dấu hiệu.';
     }
 
+    // Gemini REST uses camelCase. Keep snake_case aliases available to callers
+    // that build legacy requests without serializing the aliases.
     const generationConfig = {
-      response_mime_type: 'application/json',
+      responseMimeType: 'application/json',
+      responseSchema: DIAGNOSIS_RESPONSE_SCHEMA,
       temperature: 0.15,
       topP: 0.95
     };
-    // Keep the property available to callers while serializing it explicitly for
-    // the REST API. Non-enumerability preserves compatibility with old clients
-    // that compared the three legacy generation settings directly.
-    Object.defineProperty(generationConfig, 'response_schema', {
-      value: DIAGNOSIS_RESPONSE_SCHEMA,
+    Object.defineProperty(generationConfig, 'response_mime_type', {
+      value: generationConfig.responseMimeType,
       enumerable: false,
       configurable: true
     });
-    Object.defineProperty(generationConfig, 'toJSON', {
-      value() {
-        return {
-          response_mime_type: this.response_mime_type,
-          response_schema: this.response_schema,
-          temperature: this.temperature,
-          topP: this.topP
-        };
-      },
+    Object.defineProperty(generationConfig, 'response_schema', {
+      value: generationConfig.responseSchema,
       enumerable: false,
       configurable: true
     });
@@ -372,8 +374,13 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
    * Diagnose a crop image with Gemini, falling back to a matching sample or a
    * clearly generic offline guideline when no crop preset is available.
    */
-  static async diagnoseCropImage(base64ImageUri, cropHint = 'general', apiKey = null) {
-    // Try server-side Gemini endpoint first if running in browser context
+  static async diagnoseCropImage(
+    base64ImageUri,
+    { model = GEMINI_MODELS.FLASH, apiKey = null, cropHint = 'general' } = {}
+  ) {
+    const selectedModel = normalizeModel(model);
+
+    // A browser has the local proxy available; direct callers use REST below.
     if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
       try {
         const res = await fetch('/api/diagnose', {
@@ -381,7 +388,7 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             imageBase64: base64ImageUri,
-            cropHint,
+            model: selectedModel,
             clientApiKey: apiKey
           })
         });
@@ -395,7 +402,7 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
           }
         }
       } catch (e) {
-        // Fall back to client-side request or offline reference
+        // Fall back to a direct request or offline reference.
       }
     }
 
@@ -407,8 +414,8 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
 
     try {
       const preparedImage = await this.prepareVisionImage(base64ImageUri);
-      const payload = this.formatVisionPayload(preparedImage, cropHint);
-      const response = await fetch(apiUrl(String(apiKey).trim()), {
+      const payload = this.formatVisionPayload(preparedImage, selectedModel);
+      const response = await fetch(apiUrl(String(apiKey).trim(), selectedModel), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -444,8 +451,14 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
   /**
    * Ask the farming assistant a text question with optional diagnosis context.
    */
-  static async askFarmingAssistant(userQuestion, context = {}, apiKey = null) {
-    // Try server-side chat endpoint first if running in browser context
+  static async askFarmingAssistant(
+    userQuestion,
+    context = {},
+    { model = GEMINI_MODELS.FLASH, apiKey = null } = {}
+  ) {
+    const selectedModel = normalizeModel(model);
+
+    // A browser has the local proxy available; direct callers use REST below.
     if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
       try {
         const res = await fetch('/api/chat', {
@@ -454,6 +467,7 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
           body: JSON.stringify({
             question: userQuestion,
             context,
+            model: selectedModel,
             clientApiKey: apiKey
           })
         });
@@ -464,7 +478,7 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
           }
         }
       } catch (e) {
-        // Fall back
+        // Fall back to a direct request or offline reference.
       }
     }
 
@@ -492,7 +506,7 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
         }
       };
 
-      const response = await fetch(apiUrl(String(apiKey).trim()), {
+      const response = await fetch(apiUrl(String(apiKey).trim(), selectedModel), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

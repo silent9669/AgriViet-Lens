@@ -5,7 +5,7 @@
  */
 
 import { SAMPLE_PRESETS } from './data/sample-presets.js';
-import { GeminiService } from './services/gemini-service.js';
+import { GeminiService, GEMINI_MODELS } from './services/gemini-service.js';
 import { WeatherRadarService, VIETNAM_REGIONS } from './services/weather-radar.js';
 import { LogbookService } from './services/logbook-service.js';
 import { ImageProcessor } from './utils/image-processor.js';
@@ -340,11 +340,13 @@ export class AgriVietApp {
     if (diagnosisCard) diagnosisCard.setAttribute('aria-busy', 'true');
 
     try {
-      const diagnosis = await GeminiService.diagnoseCropImage(
-        this.currentImageBase64,
-        this.selectedCrop,
-        this.apiKey
-      );
+      const diagnosis = await GeminiService.diagnoseCropImage(this.currentImageBase64, {
+        model: GEMINI_MODELS.FLASH,
+        apiKey: this.apiKey,
+        // Retain the selected crop only for the offline demo preset; Gemini
+        // identifies the crop autonomously for online diagnosis.
+        cropHint: this.selectedCrop
+      });
 
       this.currentDiagnosis = diagnosis;
       this.renderDiagnosis(diagnosis);
@@ -632,7 +634,10 @@ export class AgriVietApp {
         }
       } : {})
     };
-    const answer = await GeminiService.askFarmingAssistant(cleanQuestion, context, this.apiKey);
+    const answer = await GeminiService.askFarmingAssistant(cleanQuestion, context, {
+      model: GEMINI_MODELS.FLASH,
+      apiKey: this.apiKey
+    });
 
     if (chatStream && typeof document !== 'undefined') {
       const answerRow = document.createElement('div');

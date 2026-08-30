@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { GEMINI_MODELS, GeminiService } from './src/services/gemini-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,13 +26,55 @@ function getGenAI() {
   return aiClient;
 }
 
-const CROP_LABELS = {
-  rice: 'Lúa Nước (Rice)',
-  durian: 'Sầu Riêng (Durian)',
-  coffee: 'Cà Phê (Coffee)',
-  dragonfruit: 'Thanh Long (Dragon Fruit)',
-  general: 'Cây Trồng Chung (General Crop)'
+const DIAGNOSIS_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    cropName: { type: 'STRING' },
+    diseaseNameVi: { type: 'STRING' },
+    diseaseNameScientific: { type: 'STRING' },
+    confidenceScore: { type: 'NUMBER' },
+    severityLevel: { type: 'STRING' },
+    symptomsSummary: { type: 'STRING' },
+    primaryCauses: { type: 'STRING' },
+    organicTreatment: {
+      type: 'OBJECT',
+      properties: {
+        title: { type: 'STRING' },
+        steps: { type: 'ARRAY', items: { type: 'STRING' } },
+        bioProducts: { type: 'STRING' }
+      },
+      required: ['title', 'steps', 'bioProducts']
+    },
+    chemicalTreatment: {
+      type: 'OBJECT',
+      properties: {
+        title: { type: 'STRING' },
+        activeIngredients: { type: 'STRING' },
+        dosageInstructions: { type: 'STRING' },
+        quarantineDays: { type: 'NUMBER', nullable: true },
+        safetyNotes: { type: 'STRING' }
+      },
+      required: ['title', 'activeIngredients', 'dosageInstructions', 'quarantineDays', 'safetyNotes']
+    },
+    seasonalPrevention: { type: 'ARRAY', items: { type: 'STRING' } }
+  },
+  required: [
+    'cropName',
+    'diseaseNameVi',
+    'diseaseNameScientific',
+    'confidenceScore',
+    'severityLevel',
+    'symptomsSummary',
+    'primaryCauses',
+    'organicTreatment',
+    'chemicalTreatment',
+    'seasonalPrevention'
+  ]
 };
+
+function normalizeModel(model) {
+  return model === GEMINI_MODELS.PRO ? GEMINI_MODELS.PRO : GEMINI_MODELS.FLASH;
+}
 
 // API Health Check
 app.get('/api/health', (req, res) => {
@@ -49,10 +92,11 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// API: Crop Pathology Diagnosis via Gemini 2.0 Flash Multimodal
+// API: Crop Pathology Diagnosis via Gemini multimodal vision.
 app.post('/api/diagnose', async (req, res) => {
   try {
-    const { imageBase64, cropHint = 'general', clientApiKey } = req.body;
+    const { imageBase64, model = GEMINI_MODELS.FLASH, clientApiKey } = req.body ?? {};
+    const selectedModel = normalizeModel(model);
 
     if (!imageBase64) {
       return res.status(400).json({ error: 'Missing imageBase64 payload' });
@@ -66,60 +110,30 @@ app.post('/api/diagnose', async (req, res) => {
       });
     }
 
-    const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
-    const cropText = CROP_LABELS[cropHint] || 'Cây trồng nhiệt đới Việt Nam';
-
     let mimeType = 'image/jpeg';
     let rawBase64 = imageBase64;
-
     if (imageBase64.startsWith('data:')) {
       const match = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
       if (match) {
-        mimeType = match[1];
+        mimeType = match[1].toLowerCase();
         rawBase64 = match[2];
       }
     }
 
-    const systemPrompt = `Bạn là Chuyên Gia Nông Nghiệp & Bác Sĩ Cây Trồng cao cấp tại Việt Nam với hơn 20 năm kinh nghiệm bệnh lý thực vật nhiệt đới.
-Cây trồng mục tiêu: ${cropText}.
+    const systemPrompt = `Bạn là Chuyên Gia Nông Nghiệp và Bác Sĩ Cây Trồng cao cấp tại Việt Nam, am hiểu bệnh lý thực vật nhiệt đới và quy trình VietGAP.
 
-Nhiệm vụ:
-Phân tích kỹ lưỡng hình ảnh lá/thân/trái của cây trồng, chẩn đoán chính xác tên bệnh, tác nhân gây bệnh, mức độ và cung cấp phác đồ điều trị chi tiết theo chuẩn VietGAP.
+Trước tiên, hãy tự nhận diện loài cây hoặc cây trồng trong ảnh từ đặc điểm hình thái; không yêu cầu người dùng chọn cây trước và không suy đoán loài cây từ nhãn giao diện. Sau đó phân tích kỹ hình ảnh lá, thân hoặc trái; phân biệt bệnh với sâu hại, thiếu dinh dưỡng và tổn thương cơ giới. Chỉ đưa ra chẩn đoán khi có dấu hiệu phù hợp, nêu rõ mức độ tin cậy và ưu tiên biện pháp an toàn, khả thi tại ruộng Việt Nam.
 
-BẮT BUỘC trả về duy nhất chuỗi JSON thuần túy (không thêm markdown hay lời dẫn) theo schema sau:
-{
-  "cropName": "Tên cây trồng tại Việt Nam",
-  "diseaseNameVi": "Tên tiếng Việt chính xác của bệnh",
-  "diseaseNameScientific": "Tên khoa học của mầm bệnh (Latin)",
-  "confidenceScore": 95,
-  "severityLevel": "Nhẹ" | "Trung bình" | "Nghiêm trọng",
-  "symptomsSummary": "Mô tả triệu chứng phát hiện trên ảnh",
-  "primaryCauses": "Nguyên nhân (nấm, vi khuẩn, virus, thiếu dinh dưỡng...)",
-  "organicTreatment": {
-    "title": "Phác đồ Sinh học / Hữu cơ VietGAP",
-    "steps": ["Bước 1...", "Bước 2..."],
-    "bioProducts": "Chế phẩm sinh học đề xuất"
-  },
-  "chemicalTreatment": {
-    "title": "Phác đồ Hóa học Đặc trị",
-    "activeIngredients": "Hoạt chất đặc trị khuyên dùng",
-    "dosageInstructions": "Liều lượng pha bình 16L hoặc 25L nước",
-    "quarantineDays": 14,
-    "safetyNotes": "Khuyến cáo an toàn lao động và bảo vệ nguồn nước"
-  },
-  "seasonalPrevention": [
-    "Biện pháp phòng ngừa 1...",
-    "Biện pháp phòng ngừa 2..."
-  ]
-}`;
+BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không markdown, không lời dẫn. JSON phải có đủ các trường cropName, diseaseNameVi, diseaseNameScientific, confidenceScore, severityLevel, symptomsSummary, primaryCauses, organicTreatment (title, steps, bioProducts), chemicalTreatment (title, activeIngredients, dosageInstructions, quarantineDays, safetyNotes), seasonalPrevention. confidenceScore là số từ 0 đến 100; quarantineDays là số hoặc null. Luôn nêu cảnh báo bảo hộ cá nhân và bảo vệ nguồn nước trong safetyNotes.`;
 
+    const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: selectedModel,
       contents: [
         {
           role: 'user',
           parts: [
-            { text: systemPrompt },
+            { text: 'Hãy tự nhận diện loài cây trong hình ảnh này rồi chẩn đoán theo schema JSON bắt buộc.' },
             {
               inlineData: {
                 mimeType,
@@ -130,7 +144,9 @@ BẮT BUỘC trả về duy nhất chuỗi JSON thuần túy (không thêm markd
         }
       ],
       config: {
+        systemInstruction: systemPrompt,
         responseMimeType: 'application/json',
+        responseSchema: DIAGNOSIS_RESPONSE_SCHEMA,
         temperature: 0.15,
         topP: 0.95
       }
@@ -141,21 +157,16 @@ BẮT BUỘC trả về duy nhất chuỗi JSON thuần túy (không thêm markd
       throw new Error('Empty response received from Gemini model');
     }
 
-    let cleaned = responseText.trim();
-    if (cleaned.startsWith('```json')) {
-      cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    } else if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
-    }
-
-    const diagnosis = JSON.parse(cleaned);
-    diagnosis.isOfflineFallback = false;
-    res.json({ success: true, diagnosis });
+    const diagnosis = {
+      ...GeminiService.parseDiagnosisResponse(responseText),
+      isOfflineFallback: false
+    };
+    return res.json({ success: true, diagnosis });
   } catch (err) {
     console.error('[Server /api/diagnose] Error:', err);
-    res.status(200).json({
+    return res.status(200).json({
       fallback: true,
-      error: err.message
+      error: err instanceof Error ? err.message : String(err)
     });
   }
 });
@@ -163,7 +174,8 @@ BẮT BUỘC trả về duy nhất chuỗi JSON thuần túy (không thêm markd
 // API: Conversational Field Copilot
 app.post('/api/chat', async (req, res) => {
   try {
-    const { question, context = {}, clientApiKey } = req.body;
+    const { question, context = {}, model = GEMINI_MODELS.FLASH, clientApiKey } = req.body ?? {};
+    const selectedModel = normalizeModel(model);
     if (!question) {
       return res.status(400).json({ error: 'Missing question parameter' });
     }
@@ -182,7 +194,7 @@ app.post('/api/chat', async (req, res) => {
     const promptText = `${systemInstruction}\n\nNgữ cảnh chẩn đoán gần nhất: ${JSON.stringify(context)}\n\nCâu hỏi của nông dân: ${question}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: selectedModel,
       contents: promptText,
       config: {
         temperature: 0.7,
