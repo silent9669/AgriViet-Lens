@@ -551,7 +551,7 @@
     }
 
     .metric-label {
-      color: var(--color-subtle);
+      color: var(--color-muted);
       font-family: var(--font-mono);
       font-size: 0.68rem;
       font-weight: 500;
@@ -600,19 +600,19 @@
     .badge-alert {
       border-color: var(--color-alert);
       background: var(--color-alert-soft);
-      color: var(--color-alert);
+      color: var(--color-status-alert-ink);
     }
 
     .badge-warning {
       border-color: var(--color-accent);
       background: var(--color-accent-soft);
-      color: var(--color-accent);
+      color: var(--color-status-warning-ink);
     }
 
     .badge-success {
       border-color: var(--color-success);
       background: var(--color-success-soft);
-      color: var(--color-success);
+      color: var(--color-status-success-ink);
     }
 
     .info-card {
@@ -643,7 +643,7 @@
       align-items: center;
       justify-content: center;
       gap: var(--space-2);
-      min-height: 44px;
+      min-height: 48px;
       padding: var(--space-2) var(--space-3);
       border: 1px solid var(--color-border);
       border-radius: var(--radius-sm);
@@ -703,7 +703,7 @@
 
     .tank-btn {
       min-width: 72px;
-      min-height: 44px;
+      min-height: 48px;
       padding-inline: var(--space-3);
       border: 1px solid var(--color-border);
       border-radius: var(--radius-sm);
@@ -849,7 +849,7 @@
     }
 
     .voice-chip {
-      min-height: 44px;
+      min-height: 48px;
       padding: var(--space-2) var(--space-3);
       border: 1px solid var(--color-border);
       border-radius: var(--radius-full);
@@ -863,6 +863,139 @@
     .voice-chip:hover {
       border-color: var(--color-primary);
       color: var(--color-primary);
+    }
+
+    /* Eight-state controls remain at least 48px for field use. */
+    .preset-btn,
+    .tank-btn,
+    .treatment-tab,
+    .voice-chip,
+    .icon-btn,
+    .field-control {
+      min-height: 48px;
+    }
+
+    .preset-btn[data-state="hover"],
+    .tank-btn[data-state="hover"],
+    .treatment-tab[data-state="hover"],
+    .voice-chip[data-state="hover"],
+    .icon-btn[data-state="hover"],
+    .field-control[data-state="hover"] {
+      border-color: var(--color-primary);
+    }
+
+    .preset-btn[data-state="focus-visible"],
+    .tank-btn[data-state="focus-visible"],
+    .treatment-tab[data-state="focus-visible"],
+    .voice-chip[data-state="focus-visible"],
+    .icon-btn[data-state="focus-visible"],
+    .field-control[data-state="focus-visible"] {
+      outline: 3px solid var(--color-focus);
+      outline-offset: 2px;
+    }
+
+    .preset-btn[data-state="active"],
+    .tank-btn[data-state="active"],
+    .treatment-tab[data-state="active"],
+    .voice-chip[data-state="active"],
+    .icon-btn[data-state="active"],
+    .field-control[data-state="active"] {
+      transform: translateY(1px);
+    }
+
+    .preset-btn[data-state="loading"],
+    .tank-btn[data-state="loading"],
+    .treatment-tab[data-state="loading"],
+    .voice-chip[data-state="loading"],
+    .icon-btn[data-state="loading"],
+    .field-control[data-state="loading"] {
+      cursor: wait;
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
+    .preset-btn[data-state="error"],
+    .tank-btn[data-state="error"],
+    .treatment-tab[data-state="error"],
+    .voice-chip[data-state="error"],
+    .icon-btn[data-state="error"],
+    .field-control[data-state="error"] {
+      border-color: var(--color-alert);
+      background: var(--color-alert-soft);
+      color: var(--color-status-alert-ink);
+    }
+
+    .preset-btn[data-state="success"],
+    .tank-btn[data-state="success"],
+    .treatment-tab[data-state="success"],
+    .voice-chip[data-state="success"],
+    .icon-btn[data-state="success"],
+    .field-control[data-state="success"] {
+      border-color: var(--color-success);
+      background: var(--color-success-soft);
+      color: var(--color-status-success-ink);
+    }
+
+    .preset-btn:disabled,
+    .tank-btn:disabled,
+    .treatment-tab:disabled,
+    .voice-chip:disabled,
+    .icon-btn:disabled,
+    .field-control:disabled,
+    .preset-btn[aria-disabled="true"],
+    .tank-btn[aria-disabled="true"],
+    .treatment-tab[aria-disabled="true"],
+    .voice-chip[aria-disabled="true"],
+    .icon-btn[aria-disabled="true"],
+    .field-control[aria-disabled="true"] {
+      cursor: not-allowed;
+      opacity: 0.5;
+      pointer-events: none;
+      transform: none;
+    }
+
+    .preview-meta {
+      position: absolute;
+      right: var(--space-3);
+      bottom: var(--space-3);
+      left: var(--space-3);
+      margin: 0;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-sm);
+      background: var(--color-overlay);
+      color: var(--color-on-primary);
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      text-align: left;
+    }
+
+    .safety-callout {
+      padding: var(--space-4);
+      border: 2px solid var(--color-alert);
+      border-radius: var(--radius-md);
+      background: var(--color-alert-soft);
+      color: var(--color-ink);
+      font-size: var(--text-sm);
+    }
+
+    .safety-callout p {
+      margin: 0;
+    }
+
+    .safety-callout p + p {
+      margin-top: var(--space-2);
+    }
+
+    .safety-heading {
+      color: var(--color-status-alert-ink);
+      font-weight: 800;
+    }
+
+    .dosage-advisory {
+      margin: var(--space-3) 0 0;
+      color: var(--color-status-warning-ink);
+      font-size: var(--text-xs);
+      line-height: 1.55;
     }
 
     .weather-metric {
@@ -1085,7 +1218,7 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="header-inner">
-        <a class="brand" href="#viewScanner" aria-label="AgriViet Lens, mở chẩn đoán sâu bệnh">
+        <a class="brand" href="#viewScanner" aria-label="AgriViet Lens Trợ lý chẩn đoán sâu bệnh &amp; Bác sĩ cây trồng AI">
           <span class="brand-mark" aria-hidden="true">
             <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">
               <path d="M19.8 3.7c-7.1-.1-12.5 2-14.3 6.1-1.3 2.9-.1 5.7 2.7 6.6 2.8.9 5.5-.8 7.1-3.3 1.2-2 2.1-5 4.5-9.4Z"></path>
@@ -1169,8 +1302,8 @@
 
               <div class="mt-5">
                 <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Khu vực tải ảnh cây trồng">
-                  <input id="fileInput" class="sr-only" type="file" accept="image/*">
-                  <input id="cameraInput" class="sr-only" type="file" accept="image/*" capture="environment">
+                  <input id="fileInput" class="sr-only" type="file" accept="image/*" aria-label="Chọn ảnh cây trồng từ thiết bị">
+                  <input id="cameraInput" class="sr-only" type="file" accept="image/*" capture="environment" aria-label="Chụp ảnh cây trồng bằng camera">
                   <div id="dropzonePlaceholder" class="dropzone-placeholder">
                     <span class="dropzone-icon" aria-hidden="true">
                       <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M19.8 3.7c-7.1-.1-12.5 2-14.3 6.1-1.3 2.9-.1 5.7 2.7 6.6 2.8.9 5.5-.8 7.1-3.3 1.2-2 2.1-5 4.5-9.4Z"></path><path d="M4 20c2.8-4 6.1-6.8 10-8.8"></path></svg>
@@ -1194,6 +1327,7 @@
 
                   <div id="previewFrame" class="preview-frame hidden" aria-live="polite">
                     <img id="imagePreview" src="" alt="Ảnh mẫu cây trồng đã chọn">
+                    <p id="imagePreviewMeta" class="preview-meta" hidden></p>
                     <button id="clearImageBtn" type="button" class="icon-btn preview-clear" aria-label="Xóa ảnh đã chọn" title="Xóa ảnh đã chọn">
                       <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7l1-3h4l1 3"></path></svg>
                     </button>
@@ -1263,6 +1397,7 @@
                   <div class="mb-3 flex flex-wrap items-center gap-2">
                     <span id="diagnosisCrop" class="badge badge-success">Lúa nước</span>
                     <span id="severityBadge" class="badge badge-alert">Mức độ: Nghiêm trọng</span>
+                    <span id="diagnosisSourceBadge" class="badge badge-warning" hidden>Mẫu thử nghiệm / Dữ liệu tham khảo</span>
                   </div>
                   <h2 id="diseaseTitle" class="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">Bệnh đạo ôn lá</h2>
                   <p id="diseaseScientific" class="mt-2 text-sm text-muted">Pyricularia oryzae</p>
@@ -1313,9 +1448,15 @@
                     <p id="chemicalTreatmentText" class="text-sm leading-relaxed text-muted">Chỉ dùng thuốc nằm trong danh mục được phép và tuân thủ nhãn sản phẩm.</p>
                     <div class="mt-4 grid gap-3 sm:grid-cols-2">
                       <div class="rounded-md border border-border bg-surface p-3"><p class="metric-label">Hoạt chất</p><p id="activeIngredients" class="mt-1 text-sm font-bold">Đang cập nhật</p></div>
-                      <div class="rounded-md border border-border bg-surface p-3"><p class="metric-label">Thời gian cách ly</p><p id="quarantineDays" class="mt-1 font-mono text-sm font-medium text-accent">14 ngày</p></div>
+                      <div class="rounded-md border border-border bg-surface p-3"><p class="metric-label">Thời gian cách ly</p><p id="quarantineDays" class="mt-1 font-mono text-sm font-medium text-accent">Theo nhãn bao bì BVTV</p></div>
                     </div>
                     <p id="dosageInstructions" class="mt-4 text-sm font-semibold text-ink">Pha theo đúng liều ghi trên nhãn.</p>
+                    <aside id="chemicalSafetyNotes" class="safety-callout mt-4" aria-labelledby="chemicalSafetyHeading">
+                      <p id="chemicalSafetyHeading" class="safety-heading">Cảnh báo PPE &amp; nguồn nước</p>
+                      <p><strong>PPE:</strong> Mang găng, khẩu trang, kính và quần áo bảo hộ khi pha, phun hoặc vệ sinh bình.</p>
+                      <p><strong>Nguồn nước:</strong> Không đổ thuốc thừa hoặc nước rửa bình xuống ao hồ, kênh mương hay giếng.</p>
+                      <p id="safetyNotes">Tuân thủ đầy đủ hướng dẫn an toàn trên nhãn sản phẩm.</p>
+                    </aside>
                   </div>
                 </div>
               </div>
@@ -1335,6 +1476,7 @@
                   </div>
                 </div>
                 <div id="dosageOutputText" class="dosage-output">Chọn dung tích bình để xem liều pha.</div>
+                <p id="dosageSafetyAdvisory" class="dosage-advisory"><strong>An toàn:</strong> Đây là phép quy đổi tham khảo theo dung tích; luôn đối chiếu liều, cây trồng, thời gian cách ly và cảnh báo trên nhãn BVTV trước khi pha.</p>
               </div>
 
               <div class="mt-5 flex flex-col gap-2 sm:flex-row">
@@ -1427,7 +1569,7 @@
               <h2 id="weatherHeading" class="text-xl font-extrabold tracking-tight">Điều kiện canh tác hôm nay</h2>
               <p id="weatherLocation" class="mt-2 text-sm text-muted">Đang tải dữ liệu khu vực.</p>
             </div>
-            <span class="badge badge-success"><svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14.9-3.9L3 10"></path><path d="M3 5v5h5M4 13a8 8 0 0 0 14.9 3.9L21 14"></path><path d="M21 19v-5h-5"></path></svg>Đồng bộ tự động</span>
+            <span id="weatherStatusBadge" class="badge badge-success"><svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14.9-3.9L3 10"></path><path d="M3 5v5h5M4 13a8 8 0 0 0 14.9 3.9L21 14"></path><path d="M21 19v-5h-5"></path></svg>Đồng bộ tự động</span>
           </div>
 
           <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

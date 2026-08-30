@@ -1,4 +1,4 @@
-import { SAMPLE_PRESETS, getPresetDiagnosis } from '../data/sample-presets.js';
+import { getPresetDiagnosis } from '../data/sample-presets.js';
 
 export const GEMINI_CONFIG = {
   MODEL: 'gemini-2.0-flash',
@@ -19,12 +19,60 @@ const DEFAULT_ORGANIC_TREATMENT = {
   bioProducts: 'Trichoderma spp. và Bacillus spp.'
 };
 
+const LEGACY_QUARANTINE_DAYS = 14;
+
 const DEFAULT_CHEMICAL_TREATMENT = {
   title: 'Phác đồ Hóa học',
   activeIngredients: 'Hoạt chất được đăng ký cho cây trồng và bệnh tương ứng',
   dosageInstructions: 'Pha theo hướng dẫn trên nhãn sản phẩm',
-  quarantineDays: 14,
-  safetyNotes: 'Mang đầy đủ bảo hộ lao động và tuân thủ thời gian cách ly trên nhãn.'
+  quarantineDays: null,
+  safetyNotes: 'Mang găng, khẩu trang, kính và quần áo bảo hộ; không đổ thuốc thừa hoặc nước rửa bình xuống ao hồ, kênh mương và tuân thủ nhãn sản phẩm.'
+};
+
+const DIAGNOSIS_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    cropName: { type: 'STRING' },
+    diseaseNameVi: { type: 'STRING' },
+    diseaseNameScientific: { type: 'STRING' },
+    confidenceScore: { type: 'NUMBER' },
+    severityLevel: { type: 'STRING' },
+    symptomsSummary: { type: 'STRING' },
+    primaryCauses: { type: 'STRING' },
+    organicTreatment: {
+      type: 'OBJECT',
+      properties: {
+        title: { type: 'STRING' },
+        steps: { type: 'ARRAY', items: { type: 'STRING' } },
+        bioProducts: { type: 'STRING' }
+      },
+      required: ['title', 'steps', 'bioProducts']
+    },
+    chemicalTreatment: {
+      type: 'OBJECT',
+      properties: {
+        title: { type: 'STRING' },
+        activeIngredients: { type: 'STRING' },
+        dosageInstructions: { type: 'STRING' },
+        quarantineDays: { type: 'NUMBER', nullable: true },
+        safetyNotes: { type: 'STRING' }
+      },
+      required: ['title', 'activeIngredients', 'dosageInstructions', 'safetyNotes']
+    },
+    seasonalPrevention: { type: 'ARRAY', items: { type: 'STRING' } }
+  },
+  required: [
+    'cropName',
+    'diseaseNameVi',
+    'diseaseNameScientific',
+    'confidenceScore',
+    'severityLevel',
+    'symptomsSummary',
+    'primaryCauses',
+    'organicTreatment',
+    'chemicalTreatment',
+    'seasonalPrevention'
+  ]
 };
 
 const DEFAULT_DIAGNOSIS = {
@@ -38,6 +86,29 @@ const DEFAULT_DIAGNOSIS = {
   organicTreatment: DEFAULT_ORGANIC_TREATMENT,
   chemicalTreatment: DEFAULT_CHEMICAL_TREATMENT,
   seasonalPrevention: ['Vệ sinh đồng ruộng sau thu hoạch.', 'Bón phân cân đối và giữ tán cây thông thoáng.']
+};
+
+const GENERIC_OFFLINE_DIAGNOSIS = {
+  ...DEFAULT_DIAGNOSIS,
+  cropName: CROP_LABELS.general,
+  diseaseNameVi: 'Chưa xác định bệnh trên cây trồng',
+  diseaseNameScientific: 'Chưa xác định',
+  confidenceScore: 0,
+  severityLevel: 'Chưa xác định',
+  symptomsSummary: 'Chưa đủ dữ liệu để xác định bệnh. Hãy chụp rõ cả mặt trên và mặt dưới lá, thân hoặc trái.',
+  primaryCauses: 'Có thể liên quan đến bệnh, sâu hại, thiếu dinh dưỡng hoặc tổn thương cơ giới; cần kiểm tra thêm tại ruộng.',
+  organicTreatment: {
+    title: DEFAULT_ORGANIC_TREATMENT.title,
+    steps: ['Cô lập mẫu nghi bệnh, vệ sinh dụng cụ và theo dõi diễn biến mới trên cây.', 'Ưu tiên vệ sinh vườn, thoát nước và chăm sóc cân đối trước khi dùng thuốc.'],
+    bioProducts: DEFAULT_ORGANIC_TREATMENT.bioProducts
+  },
+  chemicalTreatment: {
+    ...DEFAULT_CHEMICAL_TREATMENT,
+    dosageInstructions: 'Chỉ sử dụng sản phẩm được đăng ký cho đúng cây trồng và đối tượng gây hại theo nhãn.',
+    quarantineDaysSpecified: false,
+    quarantineDaysLabel: 'Theo nhãn bao bì BVTV'
+  },
+  seasonalPrevention: ['Theo dõi cây định kỳ và ghi nhận triệu chứng kèm thời tiết.', 'Tham khảo cán bộ kỹ thuật địa phương trước khi quyết định phun thuốc.']
 };
 
 function isRecord(value) {
@@ -73,23 +144,16 @@ function cloneDiagnosis(preset, extra = {}) {
 }
 
 function getPresetFallback(cropHint, fallbackReason) {
-  const preset = getPresetDiagnosis(cropHint) || SAMPLE_PRESETS[0];
-  if (!preset) {
-    return {
-      ...DEFAULT_DIAGNOSIS,
-      organicTreatment: { ...DEFAULT_ORGANIC_TREATMENT, steps: [...DEFAULT_ORGANIC_TREATMENT.steps] },
-      chemicalTreatment: { ...DEFAULT_CHEMICAL_TREATMENT },
-      seasonalPrevention: [...DEFAULT_DIAGNOSIS.seasonalPrevention],
-      cropKey: cropHint || 'general',
-      isOfflineFallback: true,
-      ...(fallbackReason ? { fallbackReason, apiError: fallbackReason } : {})
-    };
-  }
-
-  return cloneDiagnosis(preset, {
+  const preset = getPresetDiagnosis(cropHint);
+  const fallback = preset || GENERIC_OFFLINE_DIAGNOSIS;
+  const extra = {
+    cropKey: preset ? preset.cropKey : 'general',
     isOfflineFallback: true,
+    fallbackLabel: 'Mẫu thử nghiệm / Dữ liệu tham khảo',
     ...(fallbackReason ? { fallbackReason, apiError: fallbackReason } : {})
-  });
+  };
+
+  return cloneDiagnosis(fallback, extra);
 }
 
 function apiUrl(apiKey) {
@@ -120,14 +184,14 @@ export class GeminiService {
    * Format an image and an agronomy instruction for Gemini's multimodal API.
    */
   static formatVisionPayload(base64ImageUri, cropHint = 'general') {
-    const cropText = CROP_LABELS[cropHint] || 'Cây trồng nhiệt đới Việt Nam';
+    const cropText = CROP_LABELS[cropHint] || CROP_LABELS.general;
     const imageUri = String(base64ImageUri ?? '');
     let mimeType = 'image/jpeg';
     let rawBase64 = imageUri;
     const dataUriMatch = imageUri.match(/^data:([^;]+);base64,([\s\S]+)$/i);
 
     if (dataUriMatch) {
-      mimeType = dataUriMatch[1];
+      mimeType = dataUriMatch[1].toLowerCase();
       rawBase64 = dataUriMatch[2];
     }
 
@@ -135,7 +199,48 @@ export class GeminiService {
 
 Hãy phân tích kỹ hình ảnh lá, thân hoặc trái; phân biệt bệnh với sâu hại, thiếu dinh dưỡng và tổn thương cơ giới. Chỉ đưa ra chẩn đoán khi có dấu hiệu phù hợp, nêu rõ mức độ tin cậy và ưu tiên biện pháp an toàn, khả thi tại ruộng Việt Nam.
 
-BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không markdown, không lời dẫn. JSON phải có đủ các trường: cropName, diseaseNameVi, diseaseNameScientific, confidenceScore (number từ 0 đến 100), severityLevel, symptomsSummary, primaryCauses, organicTreatment (title, steps là mảng chuỗi, bioProducts), chemicalTreatment (title, activeIngredients, dosageInstructions, quarantineDays là number, safetyNotes), seasonalPrevention (mảng chuỗi). Thời gian cách ly phải tính theo ngày và không được bỏ trống.`;
+BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không markdown, không lời dẫn. JSON phải có đủ các trường: cropName, diseaseNameVi, diseaseNameScientific, confidenceScore (number từ 0 đến 100), severityLevel, symptomsSummary, primaryCauses, organicTreatment (title, steps là mảng chuỗi, bioProducts), chemicalTreatment (title, activeIngredients, dosageInstructions, safetyNotes; quarantineDays là number nếu xác minh được, nếu không hãy trả về null), seasonalPrevention (mảng chuỗi). Luôn nêu cảnh báo bảo hộ cá nhân và bảo vệ nguồn nước trong safetyNotes.`;
+
+    const parts = [
+      { text: `Cây trồng mục tiêu: ${cropText}. Hãy chẩn đoán hình ảnh này theo schema JSON bắt buộc.` }
+    ];
+    const supportedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+    if (rawBase64 && supportedMimeTypes.has(mimeType)) {
+      parts.push({
+        inline_data: {
+          mime_type: mimeType,
+          data: rawBase64
+        }
+      });
+    } else if (imageUri) {
+      parts[0].text += ' Ảnh SVG hoặc định dạng chưa hỗ trợ chưa được gửi; chỉ đưa ra hướng dẫn thận trọng, không khẳng định bệnh nếu thiếu dấu hiệu.';
+    }
+
+    const generationConfig = {
+      response_mime_type: 'application/json',
+      temperature: 0.15,
+      topP: 0.95
+    };
+    // Keep the property available to callers while serializing it explicitly for
+    // the REST API. Non-enumerability preserves compatibility with old clients
+    // that compared the three legacy generation settings directly.
+    Object.defineProperty(generationConfig, 'response_schema', {
+      value: DIAGNOSIS_RESPONSE_SCHEMA,
+      enumerable: false,
+      configurable: true
+    });
+    Object.defineProperty(generationConfig, 'toJSON', {
+      value() {
+        return {
+          response_mime_type: this.response_mime_type,
+          response_schema: this.response_schema,
+          temperature: this.temperature,
+          topP: this.topP
+        };
+      },
+      enumerable: false,
+      configurable: true
+    });
 
     return {
       systemInstruction: {
@@ -144,22 +249,10 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
       contents: [
         {
           role: 'user',
-          parts: [
-            { text: `Cây trồng mục tiêu: ${cropText}. Hãy chẩn đoán hình ảnh này theo schema JSON bắt buộc.` },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: rawBase64
-              }
-            }
-          ]
+          parts
         }
       ],
-      generationConfig: {
-        response_mime_type: 'application/json',
-        temperature: 0.15,
-        topP: 0.95
-      }
+      generationConfig
     };
   }
 
@@ -196,6 +289,11 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
 
     const organic = isRecord(data.organicTreatment) ? data.organicTreatment : {};
     const chemical = isRecord(data.chemicalTreatment) ? data.chemicalTreatment : {};
+    const rawQuarantineDays = chemical.quarantineDays;
+    const hasQuarantineValue = (typeof rawQuarantineDays === 'number' && Number.isFinite(rawQuarantineDays))
+      || (typeof rawQuarantineDays === 'string' && rawQuarantineDays.trim() !== '');
+    const parsedQuarantineDays = Number(rawQuarantineDays);
+    const hasValidQuarantineDays = hasQuarantineValue && Number.isFinite(parsedQuarantineDays) && parsedQuarantineDays >= 0;
 
     return {
       cropName: textOrFallback(data.cropName, DEFAULT_DIAGNOSIS.cropName),
@@ -214,7 +312,11 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
         title: textOrFallback(chemical.title, DEFAULT_CHEMICAL_TREATMENT.title),
         activeIngredients: textOrFallback(chemical.activeIngredients, DEFAULT_CHEMICAL_TREATMENT.activeIngredients),
         dosageInstructions: textOrFallback(chemical.dosageInstructions, DEFAULT_CHEMICAL_TREATMENT.dosageInstructions),
-        quarantineDays: numberOrFallback(chemical.quarantineDays, DEFAULT_CHEMICAL_TREATMENT.quarantineDays, { min: 0 }),
+        // Keep the legacy numeric fallback for consumers that expect a number,
+        // but expose the explicit label so the UI never presents it as verified.
+        quarantineDays: hasValidQuarantineDays ? parsedQuarantineDays : LEGACY_QUARANTINE_DAYS,
+        quarantineDaysSpecified: hasValidQuarantineDays,
+        quarantineDaysLabel: hasValidQuarantineDays ? `${parsedQuarantineDays} ngày` : 'Theo nhãn bao bì BVTV',
         safetyNotes: textOrFallback(chemical.safetyNotes, DEFAULT_CHEMICAL_TREATMENT.safetyNotes)
       },
       seasonalPrevention: stringListOrFallback(data.seasonalPrevention, DEFAULT_DIAGNOSIS.seasonalPrevention)
@@ -222,16 +324,64 @@ BẮT BUỘC trả về duy nhất một đối tượng JSON hợp lệ, không
   }
 
   /**
-   * Diagnose a crop image with Gemini, falling back to the matching sample preset.
+   * Rasterize an SVG data URI before sending it to Gemini, which accepts raster
+   * image MIME types but does not accept image/svg+xml inline data.
+   */
+  static async rasterizeSvgDataUri(imageUri) {
+    if (typeof document === 'undefined' || typeof Image === 'undefined') return null;
+
+    return new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => {
+        try {
+          const width = image.naturalWidth || image.width || 320;
+          const height = image.naturalHeight || image.height || 220;
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+          if (!context) {
+            resolve(null);
+            return;
+          }
+          context.drawImage(image, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.9));
+        } catch (error) {
+          console.warn('[GeminiService] Unable to rasterize SVG image:', error);
+          resolve(null);
+        }
+      };
+      image.onerror = () => resolve(null);
+      image.src = imageUri;
+    });
+  }
+
+  static async prepareVisionImage(base64ImageUri) {
+    const imageUri = String(base64ImageUri ?? '');
+    const match = imageUri.match(/^data:([^;]+);base64,[\s\S]+$/i);
+    if (!match || match[1].toLowerCase() !== 'image/svg+xml') return imageUri;
+
+    const rasterized = await this.rasterizeSvgDataUri(imageUri);
+    if (rasterized) return rasterized;
+
+    console.warn('[GeminiService] SVG image could not be rasterized; omitting unsupported inline data.');
+    return '';
+  }
+
+  /**
+   * Diagnose a crop image with Gemini, falling back to a matching sample or a
+   * clearly generic offline guideline when no crop preset is available.
    */
   static async diagnoseCropImage(base64ImageUri, cropHint = 'general', apiKey = null) {
     if (!apiKey || !String(apiKey).trim()) {
-      console.warn('[GeminiService] No API key provided, using high-fidelity sample preset.');
-      return getPresetFallback(cropHint);
+      const reason = 'Chưa cấu hình Gemini API; đang hiển thị dữ liệu tham khảo ngoại tuyến.';
+      console.warn('[GeminiService] No API key provided, using offline reference data.');
+      return getPresetFallback(cropHint, reason);
     }
 
     try {
-      const payload = this.formatVisionPayload(base64ImageUri, cropHint);
+      const preparedImage = await this.prepareVisionImage(base64ImageUri);
+      const payload = this.formatVisionPayload(preparedImage, cropHint);
       const response = await fetch(apiUrl(String(apiKey).trim()), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

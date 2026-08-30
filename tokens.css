@@ -32,6 +32,11 @@
   --color-shadow: oklch(22% 0.04 140 / 0.08);
   --color-shadow-strong: oklch(22% 0.04 140 / 0.14);
 
+  /* WCAG AAA badge ink on light status surfaces. */
+  --color-status-alert-ink: #7f1d1d;
+  --color-status-warning-ink: #713f12;
+  --color-status-success-ink: #14532d;
+
   /* Typography */
   --font-display: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -105,6 +110,9 @@
   --color-overlay: oklch(8% 0.03 140 / 0.72);
   --color-shadow: oklch(8% 0.03 140 / 0.2);
   --color-shadow-strong: oklch(8% 0.03 140 / 0.4);
+  --color-status-alert-ink: #fecaca;
+  --color-status-warning-ink: #fde68a;
+  --color-status-success-ink: #bbf7d0;
 }
 
 /* Base reset — clipped viewport and field-ready contrast. */
@@ -208,6 +216,143 @@ a {
 
 :focus:not(:focus-visible) {
   outline: none;
+}
+
+/* Eight-state touch-target contract for field controls and compact actions. */
+.preset-btn,
+.tank-btn,
+.treatment-tab,
+.voice-chip,
+.icon-btn,
+.field-control {
+  min-height: 48px;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* default */
+.preset-btn,
+.tank-btn,
+.treatment-tab,
+.voice-chip,
+.icon-btn,
+.field-control,
+.preset-btn[data-state="default"],
+.tank-btn[data-state="default"],
+.treatment-tab[data-state="default"],
+.voice-chip[data-state="default"],
+.icon-btn[data-state="default"],
+.field-control[data-state="default"] {
+  position: relative;
+}
+
+/* hover */
+.preset-btn:hover:not(:disabled),
+.tank-btn:hover:not(:disabled),
+.treatment-tab:hover:not(:disabled),
+.voice-chip:hover:not(:disabled),
+.icon-btn:hover:not(:disabled),
+.field-control:hover:not(:disabled),
+.preset-btn[data-state="hover"],
+.tank-btn[data-state="hover"],
+.treatment-tab[data-state="hover"],
+.voice-chip[data-state="hover"],
+.icon-btn[data-state="hover"],
+.field-control[data-state="hover"] {
+  border-color: var(--color-primary);
+}
+
+/* focus-visible */
+.preset-btn:focus-visible,
+.tank-btn:focus-visible,
+.treatment-tab:focus-visible,
+.voice-chip:focus-visible,
+.icon-btn:focus-visible,
+.field-control:focus-visible,
+.preset-btn[data-state="focus-visible"],
+.tank-btn[data-state="focus-visible"],
+.treatment-tab[data-state="focus-visible"],
+.voice-chip[data-state="focus-visible"],
+.icon-btn[data-state="focus-visible"],
+.field-control[data-state="focus-visible"] {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* active */
+.preset-btn:active:not(:disabled),
+.tank-btn:active:not(:disabled),
+.treatment-tab:active:not(:disabled),
+.voice-chip:active:not(:disabled),
+.icon-btn:active:not(:disabled),
+.field-control:active:not(:disabled),
+.preset-btn[data-state="active"],
+.tank-btn[data-state="active"],
+.treatment-tab[data-state="active"],
+.voice-chip[data-state="active"],
+.icon-btn[data-state="active"],
+.field-control[data-state="active"] {
+  transform: translateY(1px);
+}
+
+/* disabled */
+.preset-btn:disabled,
+.tank-btn:disabled,
+.treatment-tab:disabled,
+.voice-chip:disabled,
+.icon-btn:disabled,
+.field-control:disabled,
+.preset-btn[aria-disabled="true"],
+.tank-btn[aria-disabled="true"],
+.treatment-tab[aria-disabled="true"],
+.voice-chip[aria-disabled="true"],
+.icon-btn[aria-disabled="true"],
+.field-control[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
+  transform: none;
+}
+
+/* loading */
+.preset-btn[data-state="loading"],
+.tank-btn[data-state="loading"],
+.treatment-tab[data-state="loading"],
+.voice-chip[data-state="loading"],
+.icon-btn[data-state="loading"],
+.field-control[data-state="loading"] {
+  cursor: wait;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+/* error */
+.preset-btn[data-state="error"],
+.tank-btn[data-state="error"],
+.treatment-tab[data-state="error"],
+.voice-chip[data-state="error"],
+.icon-btn[data-state="error"],
+.field-control[data-state="error"] {
+  border-color: var(--color-alert);
+  background-color: var(--color-alert-soft);
+  color: var(--color-status-alert-ink);
+}
+
+/* success */
+.preset-btn[data-state="success"],
+.tank-btn[data-state="success"],
+.treatment-tab[data-state="success"],
+.voice-chip[data-state="success"],
+.icon-btn[data-state="success"],
+.field-control[data-state="success"] {
+  border-color: var(--color-success);
+  background-color: var(--color-success-soft);
+  color: var(--color-status-success-ink);
 }
 
 /* Shared interactive state contract. */

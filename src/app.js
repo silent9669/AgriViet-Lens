@@ -33,6 +33,20 @@ function escapeHTML(value) {
     .replace(/'/g, '&#039;');
 }
 
+function formatFileSize(bytes) {
+  const size = Number(bytes);
+  if (!Number.isFinite(size) || size < 0) return '—';
+  if (size < 1024) return `${Math.round(size)} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1).replace(/\.0$/, '')} KB`;
+  return `${(size / (1024 * 1024)).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')} MB`;
+}
+
+function estimateBase64Size(dataUri) {
+  const encoded = String(dataUri ?? '').split(',')[1] || '';
+  if (!encoded) return 0;
+  return Math.max(0, Math.floor((encoded.length * 3) / 4) - (encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0));
+}
+
 function setHidden(element, hidden) {
   if (!element) return;
   element.hidden = hidden;
@@ -53,6 +67,8 @@ export class AgriVietApp {
     this.tankCapacity = 16;
     this.currentDiagnosis = null;
     this.currentImageBase64 = null;
+    this.currentImageMetadata = null;
+    this.currentWeather = null;
     this.isRecording = false;
 
     this.selectedCrop = 'rice';
@@ -131,8 +147,9 @@ export class AgriVietApp {
 
     this.selectedCrop = preset.cropKey || preset.crop || 'general';
     this.currentImageBase64 = preset.sampleImageBase64 || null;
+    this.currentImageMetadata = null;
 
-    this.updateImagePreview(this.currentImageBase64);
+    this.updateImagePreview(this.currentImageBase64, null);
 
     const cropSelect = getElement('cropSelect');
     if (cropSelect && this.selectedCrop) cropSelect.value = this.selectedCrop;
@@ -245,7 +262,13 @@ export class AgriVietApp {
       if (!base64) throw new Error('Image compression returned no image data.');
 
       this.currentImageBase64 = base64;
-      this.updateImagePreview(base64);
+      this.currentImageMetadata = {
+        width: Number(result.width) || 0,
+        height: Number(result.height) || 0,
+        originalSize: Number(file.size) || Number(result.originalSize) || 0,
+        compressedSize: estimateBase64Size(base64)
+      };
+      this.updateImagePreview(base64, this.currentImageMetadata);
       const analyzeButton = getElement('analyzeBtn');
       if (analyzeButton) analyzeButton.disabled = false;
       this.showToast('Ảnh đã sẵn sàng. Nhấn “Phân tích ảnh” để chẩn đoán.', 'info');
@@ -255,21 +278,31 @@ export class AgriVietApp {
     }
   }
 
-  updateImagePreview(base64) {
+  updateImagePreview(base64, metadata = this.currentImageMetadata) {
     const preview = getElement('imagePreview');
     const frame = getElement('previewFrame');
     const placeholder = getElement('dropzonePlaceholder');
     const readyStatus = getElement('imageReadyStatus');
+    const metadataElement = getElement('imagePreviewMeta');
 
     if (!base64) {
       if (preview) preview.removeAttribute('src');
       setHidden(frame, true);
       setHidden(placeholder, false);
       setHidden(readyStatus, true);
+      setHidden(metadataElement, true);
       return;
     }
 
     if (preview) preview.src = base64;
+    if (metadataElement && metadata?.width && metadata?.height) {
+      const originalSize = Number(metadata.originalSize);
+      const compressedSize = Number(metadata.compressedSize) || estimateBase64Size(base64);
+      metadataElement.textContent = `${metadata.width} × ${metadata.height}px · ${formatFileSize(originalSize)} → ${formatFileSize(compressedSize)} sau nén`;
+      setHidden(metadataElement, false);
+    } else {
+      setHidden(metadataElement, true);
+    }
     setHidden(frame, false);
     setHidden(placeholder, true);
     setHidden(readyStatus, false);
@@ -277,7 +310,8 @@ export class AgriVietApp {
 
   clearSelectedImage() {
     this.currentImageBase64 = null;
-    this.updateImagePreview(null);
+    this.currentImageMetadata = null;
+    this.updateImagePreview(null, null);
     const analyzeButton = getElement('analyzeBtn');
     if (analyzeButton) analyzeButton.disabled = true;
   }
@@ -315,7 +349,11 @@ export class AgriVietApp {
       this.currentDiagnosis = diagnosis;
       this.renderDiagnosis(diagnosis);
       this.setTankCapacity(16);
-      this.showToast('Đã hoàn tất phân tích bệnh lý thực vật.', 'success');
+      if (diagnosis.isOfflineFallback) {
+        this.showToast('Mẫu thử nghiệm / Dữ liệu tham khảo: Gemini chưa khả dụng; hãy đối chiếu nhãn BVTV và hỏi cán bộ kỹ thuật trước khi xử lý.', 'warning');
+      } else {
+        this.showToast('Đã hoàn tất phân tích bệnh lý thực vật.', 'success');
+      }
       return diagnosis;
     } catch (error) {
       console.error('[AgriVietApp] Diagnosis failed:', error);
@@ -347,10 +385,18 @@ export class AgriVietApp {
     const confidenceMeter = getElement('confidenceMeter');
     const symptoms = getElement('symptomsText');
     const causes = getElement('causesText');
+    const sourceBadge = getElement('diagnosisSourceBadge');
 
     if (cropName) cropName.textContent = data.cropName || 'Cây trồng';
     if (diseaseName) diseaseName.textContent = data.diseaseNameVi || 'Bệnh cây trồng chưa xác định';
     if (scientificName) scientificName.textContent = data.diseaseNameScientific || 'Đang cập nhật';
+    if (sourceBadge) {
+      sourceBadge.textContent = data.isOfflineFallback
+        ? (data.fallbackLabel || 'Mẫu thử nghiệm / Dữ liệu tham khảo')
+        : 'Phân tích từ Gemini API';
+      sourceBadge.className = `badge ${data.isOfflineFallback ? 'badge-warning' : 'badge-success'}`;
+      setHidden(sourceBadge, false);
+    }
 
     const confidence = Math.max(0, Math.min(100, Number(data.confidenceScore) || 0));
     if (confidenceBadge) confidenceBadge.textContent = `${confidence}%`;
@@ -385,10 +431,24 @@ export class AgriVietApp {
     const activeIngredients = getElement('activeIngredients');
     const quarantineDays = getElement('quarantineDays');
     const dosageInstructions = getElement('dosageInstructions');
+    const safetyNotes = getElement('safetyNotes');
     if (chemicalTitle) chemicalTitle.textContent = chemical.title || 'Phác đồ Hóa học Đặc trị';
     if (activeIngredients) activeIngredients.textContent = chemical.activeIngredients || 'Hoạt chất được đăng ký';
-    if (quarantineDays) quarantineDays.textContent = `${chemical.quarantineDays ?? 14} ngày`;
+    const rawQuarantineDays = chemical.quarantineDays;
+    const hasQuarantineValue = (typeof rawQuarantineDays === 'number' && Number.isFinite(rawQuarantineDays))
+      || (typeof rawQuarantineDays === 'string' && rawQuarantineDays.trim() !== '');
+    const parsedQuarantineDays = Number(rawQuarantineDays);
+    const hasQuarantineDays = chemical.quarantineDaysSpecified !== false
+      && hasQuarantineValue
+      && Number.isFinite(parsedQuarantineDays)
+      && parsedQuarantineDays >= 0;
+    if (quarantineDays) {
+      quarantineDays.textContent = hasQuarantineDays
+        ? (chemical.quarantineDaysLabel || `${parsedQuarantineDays} ngày`)
+        : 'Theo nhãn bao bì BVTV';
+    }
     if (dosageInstructions) dosageInstructions.textContent = chemical.dosageInstructions || 'Pha theo đúng liều ghi trên nhãn.';
+    if (safetyNotes) safetyNotes.textContent = chemical.safetyNotes || 'Mang đầy đủ bảo hộ cá nhân và bảo vệ nguồn nước theo nhãn sản phẩm.';
 
     this.currentDosageInstruction = chemical.dosageInstructions || '';
     this.switchTreatmentTab(this.treatmentTab);
@@ -477,7 +537,7 @@ export class AgriVietApp {
         if (!transcript) return;
         const input = getElement('voiceTextInput');
         if (input) input.value = transcript;
-        void this.submitVoiceQuery(transcript);
+        void this.submitVoiceQuery(transcript, { preserveTranscript: true });
       };
 
       this.recognition.onerror = event => {
@@ -530,12 +590,12 @@ export class AgriVietApp {
     if (status) status.textContent = recording ? 'ĐANG NGHE' : 'SẴN SÀNG';
   }
 
-  async submitVoiceQuery(question) {
+  async submitVoiceQuery(question, { preserveTranscript = false } = {}) {
     const cleanQuestion = String(question ?? '').trim();
     if (!cleanQuestion) return '';
 
     const input = getElement('voiceTextInput');
-    if (input) input.value = '';
+    if (input && !preserveTranscript) input.value = '';
 
     const chatStream = getElement('voiceChatStream');
     if (chatStream && typeof document !== 'undefined') {
@@ -553,9 +613,25 @@ export class AgriVietApp {
       chatStream.scrollTop = chatStream.scrollHeight;
     }
 
-    const context = this.currentDiagnosis
-      ? { crop: this.currentDiagnosis.cropName, disease: this.currentDiagnosis.diseaseNameVi }
-      : {};
+    const weather = this.currentWeather;
+    const weatherSummary = weather
+      ? `${weather.regionName || weather.locationName || 'Khu vực theo dõi'}: ${weather.temp ?? weather.temperature ?? '—'}°C, ẩm độ ${weather.humidity ?? '—'}%, mưa ${weather.rain ?? weather.precipitation ?? '—'} mm, ${weather.isOffline ? 'dữ liệu ước tính khu vực' : 'dữ liệu trực tuyến'}.`
+      : 'Chưa có dữ liệu thời tiết khu vực.';
+    const context = {
+      ...(this.currentDiagnosis
+        ? { crop: this.currentDiagnosis.cropName, disease: this.currentDiagnosis.diseaseNameVi }
+        : {}),
+      weatherSummary,
+      ...(weather ? {
+        weather: {
+          region: weather.regionName || weather.locationName || 'Khu vực theo dõi',
+          temperature: weather.temp ?? weather.temperature ?? null,
+          humidity: weather.humidity ?? null,
+          precipitation: weather.rain ?? weather.precipitation ?? null,
+          isOffline: weather.isOffline === true
+        }
+      } : {})
+    };
     const answer = await GeminiService.askFarmingAssistant(cleanQuestion, context, this.apiKey);
 
     if (chatStream && typeof document !== 'undefined') {
@@ -638,8 +714,15 @@ export class AgriVietApp {
       const riskScore = getElement('fungalRiskScore');
       const riskMeter = getElement('fungalRiskMeter');
       const riskAlert = getElement('fungalRiskAlert');
+      const weatherStatusBadge = getElement('weatherStatusBadge');
 
+      this.currentWeather = data;
       if (location) location.textContent = `${data.regionName || data.locationName || 'Khu vực theo dõi'} · ${data.mainCrops || ''}`;
+      if (weatherStatusBadge) {
+        const isOffline = data.isOffline === true;
+        weatherStatusBadge.className = `badge ${isOffline ? 'badge-warning' : 'badge-success'}`;
+        weatherStatusBadge.textContent = isOffline ? 'Dữ liệu ước tính khu vực' : 'Đồng bộ tự động';
+      }
       if (temperatureElement) temperatureElement.textContent = `${temperature}°C`;
       if (humidityElement) humidityElement.textContent = `${humidity}%`;
       if (precipitationElement) precipitationElement.textContent = `${precipitation} mm`;
@@ -671,6 +754,10 @@ export class AgriVietApp {
   renderHourlyTrend(hourly) {
     const trend = getElement('hourlyTrend');
     if (!trend) return;
+
+    // Regional/offline forecasts may not include hourly values; never leave
+    // stale bars from the previously selected region on screen.
+    trend.innerHTML = '';
 
     const humidityValues = Array.isArray(hourly?.relative_humidity_2m)
       ? hourly.relative_humidity_2m.slice(0, 8)

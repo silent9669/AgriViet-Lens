@@ -81,7 +81,8 @@ export class WeatherRadarService {
         rain,
         wind,
         risk: this.calculateFungalRisk(temp, humidity, rain),
-        hourly: data.hourly || null
+        hourly: data.hourly || null,
+        isOffline: false
       };
     } catch (e) {
       console.warn('[WeatherRadarService] Using regional fallback data:', e.message);
@@ -96,7 +97,8 @@ export class WeatherRadarService {
         rain: fallbackRain,
         wind: 7.2,
         risk: this.calculateFungalRisk(fallbackTemp, fallbackHumidity, fallbackRain),
-        hourly: null
+        hourly: null,
+        isOffline: true
       };
     }
   }
@@ -137,7 +139,8 @@ export class WeatherRadarService {
         humidity: currentHumidity,
         precipitation: currentPrecip,
         riskEvaluation: risk,
-        forecast3Days
+        forecast3Days,
+        isOffline: false
       };
     } catch (err) {
       console.warn('[WeatherRadarService] Using regional offline fallback weather data:', err.message);
@@ -154,7 +157,8 @@ export class WeatherRadarService {
           { date: 'Hôm nay', tempMax: 32, tempMin: 25, rainProb: 65 },
           { date: 'Ngày mai', tempMax: 31, tempMin: 24, rainProb: 70 },
           { date: 'Ngày kia', tempMax: 33, tempMin: 25, rainProb: 40 }
-        ]
+        ],
+        isOffline: true
       };
     }
   }
